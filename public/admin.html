@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔐 Admin Panel</title>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    body {
+      background: #0e0e0e;
+      color: #fff;
+      font-family: "Poppins", sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px;
+    }
+
+    .panel {
+      background: rgba(255,255,255,0.08);
+      padding: 25px;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 600px;
+      box-shadow: 0 0 20px rgba(255,255,255,0.05);
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      background: rgba(255,255,255,0.05);
+      color: #fff;
+      margin-bottom: 10px;
+    }
+
+    button {
+      background: linear-gradient(45deg, #ff5733, #2196f3);
+      border: none;
+      padding: 10px 20px;
+      color: #fff;
+      border-radius: 25px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .token {
+      background: rgba(255,255,255,0.1);
+      padding: 10px;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="panel">
+    <h1>🔐 Admin Token Panel</h1>
+    <input id="token" placeholder="Enter new token">
+    <button onclick="addToken()">➕ Add Token</button>
+    <div id="list"></div>
+  </div>
+
+<script>
+async function loadTokens() {
+  const res = await fetch('/api/admin_list');
+  const tokens = await res.json();
+  const div = document.getElementById('list');
+  div.innerHTML = '';
+  tokens.forEach(t => {
+    const el = document.createElement('div');
+    el.className = 'token';
+    el.innerHTML = `
+      <code>${t}</code><br>
+      <button onclick="copy('${t}')">📋 Copy Link</button>
+      <button onclick="del('${t}')">❌ Delete</button>
+    `;
+    div.appendChild(el);
+  });
+}
+
+async function addToken() {
+  const token = document.getElementById('token').value.trim();
+  if (!token) return Swal.fire('⚠️ Enter a token');
+  await fetch('/api/admin_add', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})});
+  Swal.fire('✅ Added');
+  loadTokens();
+}
+
+async function del(t) {
+  await fetch('/api/admin_delete', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:t})});
+  Swal.fire('🗑 Deleted');
+  loadTokens();
+}
+
+function copy(t) {
+  const link = `${window.location.origin}/api/fetch?token=${t}`;
+  navigator.clipboard.writeText(link);
+  Swal.fire('📋 Copied', link, 'success');
+}
+
+loadTokens();
+</script>
+</body>
+</html>
