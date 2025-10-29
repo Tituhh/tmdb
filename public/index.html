@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎬 TMDB Blogger Post Generator</title>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    :root {
+      --bg: #0e0e0e;
+      --box: rgba(255, 255, 255, 0.08);
+      --accent: #ff5733;
+      --blue: #2196f3;
+      --green: #4caf50;
+      --text: #f5f5f5;
+      --muted: #bdbdbd;
+      --radius: 12px;
+    }
+
+    body {
+      font-family: "Poppins", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding: 30px 10px;
+    }
+
+    .container {
+      background: var(--box);
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius);
+      padding: 25px;
+      width: 100%;
+      max-width: 800px;
+      box-shadow: 0 0 20px rgba(255,255,255,0.05);
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 15px;
+      color: var(--accent);
+    }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 10px;
+      margin: 6px 0 12px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      background: rgba(255,255,255,0.05);
+      color: var(--text);
+      font-size: 15px;
+      outline: none;
+      transition: 0.3s;
+    }
+
+    input:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+    }
+
+    .buttons {
+      text-align: center;
+      margin: 15px 0;
+    }
+
+    button {
+      background: linear-gradient(45deg, var(--accent), var(--blue));
+      border: none;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 25px;
+      margin: 5px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 12px var(--accent);
+    }
+
+    .download-item {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .status {
+      text-align: center;
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-weight: bold;
+    }
+
+    .live { background: var(--green); color: #fff; }
+    .notlive { background: #ff3333; color: #fff; }
+
+    textarea#output {
+      min-height: 200px;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>🎬 TMDB Blogger Post Generator</h1>
+
+    <div style="text-align:center;margin-bottom:10px;">
+      <input id="apiLink" placeholder="🔗 Enter API link with token (e.g. https://yourapp.vercel.app/api/fetch?token=...)" />
+      <span id="status" class="status notlive">Not Connected</span>
+    </div>
+
+    <div>
+      <input id="tmdbQuery" placeholder="🎞️ Enter Movie / TV Name or TMDB ID">
+      <button onclick="fetchData()">🔍 Fetch Data</button>
+    </div>
+
+    <input id="title" placeholder="Title">
+    <input id="genre" placeholder="Genres">
+    <input id="director" placeholder="Director">
+    <input id="cast" placeholder="Cast">
+    <input id="country" placeholder="Country">
+    <input id="duration" placeholder="Duration (min)">
+    <input id="quality" placeholder="Quality">
+    <input id="year" placeholder="Release Year">
+    <input id="rating" placeholder="IMDb Rating">
+    <input id="votes" placeholder="Votes">
+    <textarea id="overview" placeholder="Overview / Review"></textarea>
+    <input id="poster" placeholder="Poster URL">
+    <input id="screenshots" placeholder="Screenshot URLs (comma separated, up to 5)">
+    <input id="trailer" placeholder="Trailer URL (YouTube)">
+    <input id="receiverMail" placeholder="📧 Blogger Mail (receiver)">
+    
+    <h3>📥 Download Links</h3>
+    <div id="downloads"></div>
+    <button onclick="addDownload()">➕ Add Download Link</button>
+
+    <div class="buttons">
+      <button onclick="generatePost()">🧩 Generate Post</button>
+      <button onclick="copyHTML()">📋 Copy HTML</button>
+      <button onclick="sendMail()">📧 Send via Email</button>
+    </div>
+
+    <textarea id="output" placeholder="Generated Blogger HTML will appear here..."></textarea>
+  </div>
+
+<script>
+let isLive = false;
+
+document.getElementById("apiLink").addEventListener("change", checkAPI);
+
+function checkAPI() {
+  const link = document.getElementById("apiLink").value.trim();
+  fetch(link)
+    .then(res => res.ok ? res.json() : Promise.reject())
+    .then(() => {
+      isLive = true;
+      document.getElementById("status").textContent = "Live";
+      document.getElementById("status").className = "status live";
+      Swal.fire("✅ Connected!", "Token verified successfully.", "success");
+    })
+    .catch(() => {
+      isLive = false;
+      document.getElementById("status").textContent = "Not Connected";
+      document.getElementById("status").className = "status notlive";
+      Swal.fire("❌ Invalid API", "Please check your token or API link.", "error");
+    });
+}
+
+async function fetchData() {
+  if (!isLive) return Swal.fire("⚠️ Not Connected", "Please connect API first.", "warning");
+  const query = document.getElementById("tmdbQuery").value.trim();
+  if (!query) return Swal.fire("⚠️ Enter a TMDB ID or Name", "", "warning");
+
+  const link = document.getElementById("apiLink").value;
+  const url = query.match(/^\d+$/)
+    ? `${link}&id=${query}`
+    : `${link}&name=${encodeURIComponent(query)}`;
+
+  Swal.fire("Fetching data...", "Please wait", "info");
+
+  const res = await fetch(url);
+  const data = await res.json();
+
+  document.getElementById("title").value = data.title || data.name || "";
+  document.getElementById("genre").value = data.genres?.map(g => g.name).join(", ") || "";
+  document.getElementById("duration").value = data.runtime || "";
+  document.getElementById("rating").value = data.vote_average || "";
+  document.getElementById("votes").value = data.vote_count || "";
+  document.getElementById("overview").value = data.overview || "";
+  document.getElementById("poster").value = `https://image.tmdb.org/t/p/w500${data.poster_path}`;
+  document.getElementById("year").value = (data.release_date || "").split("-")[0] || "";
+  document.getElementById("cast").value = data.credits?.cast?.slice(0,5).map(c=>c.name).join(", ") || "";
+  document.getElementById("director").value = data.credits?.crew?.find(c=>c.job==="Director")?.name || "";
+  document.getElementById("screenshots").value = data.images?.backdrops?.slice(0,5).map(i=>`https://image.tmdb.org/t/p/w780${i.file_path}`).join(", ") || "";
+
+  Swal.fire("✅ Data Loaded", "You can now edit and generate the post!", "success");
+}
+
+function addDownload() {
+  const div = document.createElement("div");
+  div.className = "download-item";
+  div.innerHTML = `
+    <input placeholder="Label (e.g. 480p)" class="label">
+    <input placeholder="URL" class="url">
+    <button onclick="this.parentNode.remove()">❌</button>
+  `;
+  document.getElementById("downloads").appendChild(div);
+}
+
+function generatePost() {
+  const title = document.getElementById("title").value;
+  const genre = document.getElementById("genre").value;
+  const poster = document.getElementById("poster").value;
+  const overview = document.getElementById("overview").value;
+  const screenshots = document.getElementById("screenshots").value.split(",").slice(0,5);
+  const trailer = document.getElementById("trailer").value;
+  const downloads = Array.from(document.querySelectorAll(".download-item")).map(d => ({
+    label: d.querySelector(".label").value,
+    url: d.querySelector(".url").value
+  }));
+
+  let ssHTML = screenshots.map(s=>`<img src="${s.trim()}" style="width:100%;border-radius:8px;margin:5px 0;">`).join("");
+
+  let dlHTML = downloads.map(d=>`<a href="${d.url}" target="_blank" style="background:#ff5733;color:#fff;padding:10px 25px;margin:5px;border-radius:25px;text-decoration:none;">⬇ ${d.label}</a>`).join("");
+
+  const html = `
+<div style="background:#0e0e0e;color:#fff;padding:20px;border-radius:12px;font-family:'Poppins',sans-serif;max-width:700px;margin:auto;">
+<img src="${poster}" alt="${title}" style="width:100%;border-radius:12px;margin-bottom:15px;">
+<h2 style="color:#ff5733;text-align:center;">🎬 ${title}</h2>
+<p><b>Genre:</b> ${genre}</p>
+<p>${overview}</p>
+<div>${ssHTML}</div>
+<div style="text-align:center;margin-top:15px;">
+  <a href="${trailer}" target="_blank" style="background:#2196f3;color:#fff;padding:10px 25px;border-radius:25px;text-decoration:none;">▶ Watch Trailer</a>
+</div>
+<div style="margin-top:20px;text-align:center;">
+  ${dlHTML}
+</div>
+</div>`;
+
+  document.getElementById("output").value = html;
+  Swal.fire("✅ HTML Generated", "Copy or send to Blogger!", "success");
+}
+
+function copyHTML() {
+  const text = document.getElementById("output");
+  text.select();
+  document.execCommand("copy");
+  Swal.fire("📋 Copied!", "HTML copied to clipboard.", "success");
+}
+
+function sendMail() {
+  const receiver = document.getElementById("receiverMail").value.trim();
+  if (!receiver) return Swal.fire("⚠️ Enter Blogger Mail", "", "warning");
+
+  const title = document.getElementById("title").value;
+  const html = document.getElementById("output").value;
+
+  fetch("/api/send_email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title, html, receiver })
+  })
+  .then(res => res.ok ? Swal.fire("📧 Sent!", "Post sent to Blogger mail.", "success") : Swal.fire("❌ Error", "Failed to send mail.", "error"));
+}
+</script>
+</body>
+</html>
