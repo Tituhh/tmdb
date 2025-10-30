@@ -4,7 +4,98 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TMDB Post Generator</title>
-  <link href="https://tituhh.github.io/css/cdn/style.css" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: #0e0e0e;
+      color: #f5f5f5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      background: #1a1a1a;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.5);
+      max-width: 850px;
+      width: 100%;
+    }
+    h2 {
+      text-align: center;
+      color: #ff5252;
+      margin-bottom: 20px;
+    }
+    .input-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    input {
+      flex: 1;
+      padding: 10px;
+      border-radius: 6px;
+      border: none;
+      outline: none;
+    }
+    button {
+      background: #b71c1c;
+      color: #fff;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    button:hover {
+      background: #2e7d32;
+    }
+    #movieDetails img {
+      width: 100%;
+      border-radius: 10px;
+      margin-bottom: 10px;
+    }
+    .screenshots {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .screenshots img {
+      width: 100%;
+      border-radius: 8px;
+    }
+    textarea {
+      width: 100%;
+      height: 200px;
+      background: #121212;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px;
+      margin-top: 15px;
+      resize: none;
+    }
+    #copyBtn {
+      width: 100%;
+      margin-top: 10px;
+    }
+    .download-field {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .download-field input {
+      flex: 1;
+      padding: 8px;
+      border-radius: 6px;
+      border: none;
+    }
+  </style>
 </head>
 <body>
   <div class="container">
@@ -56,36 +147,35 @@
 
     let url;
     if (isNaN(query)) {
-      url = `https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${query}`;
+      url = \`https://api.themoviedb.org/3/search/movie?api_key=\${apiKey}&query=\${query}\`;
     } else {
-      url = `https://api.themoviedb.org/3/movie/${query}?api_key=${apiKey}`;
+      url = \`https://api.themoviedb.org/3/movie/\${query}?api_key=\${apiKey}\`;
     }
 
     const res = await fetch(url);
     const data = await res.json();
 
     movieData = isNaN(query) ? data.results[0] : data;
-
     if (!movieData) return alert("Movie not found!");
 
-    const screenshotsUrl = `https://api.themoviedb.org/3/movie/${movieData.id}/images?api_key=${apiKey}`;
+    const screenshotsUrl = \`https://api.themoviedb.org/3/movie/\${movieData.id}/images?api_key=\${apiKey}\`;
     const screenshotsRes = await fetch(screenshotsUrl);
     const screenshotsData = await screenshotsRes.json();
 
     const screenshots = screenshotsData.backdrops.slice(0, 4).map(img => 
-      `https://image.tmdb.org/t/p/w500${img.file_path}`
+      \`https://image.tmdb.org/t/p/w500\${img.file_path}\`
     );
 
-    movieDetails.innerHTML = `
-      <img src="https://image.tmdb.org/t/p/w500${movieData.poster_path}" alt="${movieData.title}">
-      <p><strong>Title:</strong> ${movieData.title}</p>
-      <p><strong>Release:</strong> ${movieData.release_date}</p>
-      <p><strong>Rating:</strong> ⭐ ${movieData.vote_average}</p>
-      <p><strong>Overview:</strong> ${movieData.overview}</p>
+    movieDetails.innerHTML = \`
+      <img src="https://image.tmdb.org/t/p/w500\${movieData.poster_path}" alt="\${movieData.title}">
+      <p><strong>Title:</strong> \${movieData.title}</p>
+      <p><strong>Release:</strong> \${movieData.release_date}</p>
+      <p><strong>Rating:</strong> ⭐ \${movieData.vote_average}</p>
+      <p><strong>Overview:</strong> \${movieData.overview}</p>
       <div class="screenshots">
-        ${screenshots.map(s => `<img src="${s}" alt="Screenshot">`).join("")}
+        \${screenshots.map(s => \`<img src="\${s}" alt="Screenshot">\`).join("")}
       </div>
-    `;
+    \`;
   });
 
   generateBtn.addEventListener("click", () => {
@@ -94,27 +184,29 @@
     const servers = [...document.querySelectorAll(".download-field")].map(div => {
       const name = div.querySelector(".server-name").value;
       const link = div.querySelector(".server-link").value;
-      return name && link ? `<a href="${link}" class="download-btn">${name}</a>` : "";
-    }).join("\n");
+      return name && link ? \`<a href="\${link}" class="download-btn">\${name}</a>\` : "";
+    }).join("\\n");
 
     const screenshots = [...movieDetails.querySelectorAll(".screenshots img")]
-      .map(img => `<img src="${img.src}" alt="Screenshot">`).join("\n");
+      .map(img => \`<img src="\${img.src}" alt="Screenshot">\`).join("\\n");
 
-    const html = `
+    const html = \`
 <link href="https://tituhh.github.io/css/cdn/style.css" rel="stylesheet">
 
 <div class="movie-post">
-  <h2>🎬 ${movieData.title} (${movieData.release_date?.split("-")[0]})</h2>
-  <img src="https://image.tmdb.org/t/p/w500${movieData.poster_path}" alt="${movieData.title}">
-  <p><strong>Genre:</strong> ${movieData.genre_ids?.join(", ") || "N/A"}</p>
-  <p><strong>IMDb:</strong> ⭐ ${movieData.vote_average}</p>
-  <p><strong>Release:</strong> ${movieData.release_date}</p>
-  <p><strong>Overview:</strong> ${movieData.overview}</p>
+  <h2>🎬 \${movieData.title} (\${movieData.release_date?.split("-")[0]})</h2>
+  <img src="https://image.tmdb.org/t/p/w500\${movieData.poster_path}" alt="\${movieData.title}">
+  <p><strong>Genre:</strong> \${movieData.genre_ids?.join(", ") || "N/A"}</p>
+  <p><strong>IMDb:</strong> ⭐ \${movieData.vote_average}</p>
+  <p><strong>Release:</strong> \${movieData.release_date}</p>
+  <p><strong>Duration:</strong> \${movieData.runtime || "N/A"} min</p>
+  <p><strong>Language:</strong> \${movieData.original_language?.toUpperCase() || "N/A"}</p>
+  <p><strong>Overview:</strong> \${movieData.overview}</p>
 
-  <div class="screenshots">${screenshots}</div>
+  <div class="screenshots">\${screenshots}</div>
   <h3>📥 Download Links:</h3>
-  ${servers}
-</div>`;
+  \${servers}
+</div>\`;
 
     output.value = html.trim();
   });
