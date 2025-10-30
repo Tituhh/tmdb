@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TMDB Post Generator</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400&display=swap');
+body {
+  font-family: 'Poppins', sans-serif;
+  background: #f9f9f9;
+  color: #222;
+  padding: 20px;
+  margin: 0;
+}
+h1 {
+  text-align: center;
+  color: #d32f2f;
+  font-weight: 400;
+}
+input, textarea, button {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+}
+input, textarea {
+  background: #fff;
+  color: #222;
+}
+button {
+  background: #d32f2f;
+  color: #fff;
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: 0.3s;
+}
+button:hover {
+  background: #388e3c;
+}
+.add-btn {
+  background: #555;
+}
+.code-box {
+  background: #f0f0f0;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 15px;
+  white-space: pre-wrap;
+  font-family: monospace;
+  color: #222;
+}
+.copy-btn {
+  background: #388e3c;
+  margin-top: 8px;
+  position: relative;
+}
+.copy-btn span {
+  position: absolute;
+  right: 10px;
+  top: 8px;
+  font-size: 13px;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.copy-btn.copied span {
+  opacity: 1;
+}
+.download-field, .screenshot-field {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.download-field input, .screenshot-field input {
+  flex: 1;
+}
+#screenshotPreview {
+  display: grid;
+  grid-template-columns: repeat(auto-fill,minmax(150px,1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+#screenshotPreview img {
+  width: 100%;
+  border-radius: 8px;
+  box-shadow: 0 0 6px rgba(0,0,0,0.1);
+}
+</style>
+</head>
+<body>
+
+<h1>🎬 TMDB Post Generator</h1>
+<input type="text" id="tmdbId" placeholder="Enter TMDB Movie ID">
+<button id="fetchBtn">Fetch Movie</button>
+
+<div id="movieFields" style="display:none;">
+  <input id="title" placeholder="Title">
+  <input id="year" placeholder="Year">
+  <input id="genres" placeholder="Genres">
+  <input id="rating" placeholder="IMDb Rating">
+  <input id="release" placeholder="Release Date">
+  <input id="poster" placeholder="Poster URL">
+  <textarea id="overview" rows="3" placeholder="Overview"></textarea>
+  <textarea id="customReview" rows="3" placeholder="Custom Review"></textarea>
+
+  <h3>Screenshots (auto + manual)</h3>
+  <div id="screenshotPreview"></div>
+  <div id="screenshots">
+    <div class="screenshot-field">
+      <input type="text" placeholder="Add extra Screenshot URL">
+    </div>
+  </div>
+  <button class="add-btn" id="addShot">+ Screenshot</button>
+
+  <h3>Download Links</h3>
+  <div id="downloadButtons">
+    <div class="download-field">
+      <input type="text" placeholder="Server Name (e.g. Drive)">
+      <input type="text" placeholder="Download URL">
+    </div>
+  </div>
+  <button class="add-btn" id="addBtn">+ Server</button>
+  <button id="generateBtn">Generate Post</button>
+</div>
+
+<h2>Generated HTML:</h2>
+<pre class="code-box" id="output"></pre>
+<button class="copy-btn" id="copyBtn">Copy HTML <span>Copied!</span></button>
+
+<script>
+const TMDB_API_KEY = "55b11132b5aef36e8376418dcce756f2"; // Replace with your TMDB key
+
+document.getElementById("fetchBtn").addEventListener("click", async () => {
+  const id = document.getElementById("tmdbId").value.trim();
+  if (!id) return alert("Enter TMDB ID");
+
+  try {
+    const [infoRes, imgRes] = await Promise.all([
+      fetch(`https://api.themoviedb.org/3/movie/${id}?api_key=${TMDB_API_KEY}&language=en-US`),
+      fetch(`https://api.themoviedb.org/3/movie/${id}/images?api_key=${TMDB_API_KEY}`)
+    ]);
+
+    const data = await infoRes.json();
+    const imgs = await imgRes.json();
+
+    if (data.success === false) return alert("Invalid TMDB ID or API Key!");
+
+    window.movieData = data;
+    window.screens = imgs.backdrops?.slice(0,5) || [];
+
+    document.getElementById("movieFields").style.display = "block";
+    document.getElementById("title").value = data.title || "";
+    document.getElementById("year").value = data.release_date?.split("-")[0] || "";
+    document.getElementById("genres").value = data.genres.map(g => g.name).join(", ");
+    document.getElementById("rating").value = data.vote_average;
+    document.getElementById("release").value = data.release_date;
+    document.getElementById("poster").value = "https://image.tmdb.org/t/p/w500" + data.poster_path;
+    document.getElementById("overview").value = data.overview;
+
+    // Screenshot preview
+    const preview = document.getElementById("screenshotPreview");
+    preview.innerHTML = screens.map(s =>
+      `<img src="https://image.tmdb.org/t/p/w500${s.file_path}" alt="screenshot">`
+    ).join("");
+
+  } catch (err) {
+    alert("Error fetching TMDB data.");
+  }
+});
+
+document.getElementById("addBtn").addEventListener("click", () => {
+  const div = document.createElement("div");
+  div.className = "download-field";
+  div.innerHTML = `<input type="text" placeholder="Server Name"><input type="text" placeholder="Download URL">`;
+  document.getElementById("downloadButtons").appendChild(div);
+});
+
+document.getElementById("addShot").addEventListener("click", () => {
+  const div = document.createElement("div");
+  div.className = "screenshot-field";
+  div.innerHTML = `<input type="text" placeholder="Screenshot Image URL">`;
+  document.getElementById("screenshots").appendChild(div);
+});
+
+document.getElementById("generateBtn").addEventListener("click", () => {
+  const title = document.getElementById("title").value;
+  const year = document.getElementById("year").value;
+  const genres = document.getElementById("genres").value;
+  const rating = document.getElementById("rating").value;
+  const release = document.getElementById("release").value;
+  const poster = document.getElementById("poster").value;
+  const overview = document.getElementById("overview").value;
+  const review = document.getElementById("customReview").value;
+
+  const screenshots = [
+    ...screens.map(s => "https://image.tmdb.org/t/p/w500" + s.file_path),
+    ...[...document.querySelectorAll("#screenshots input")].map(i => i.value).filter(v => v)
+  ];
+
+  const downloads = [...document.querySelectorAll("#downloadButtons .download-field")].map(f => {
+    const [name, url] = f.querySelectorAll("input");
+    return { name: name.value, url: url.value };
+  }).filter(d => d.name && d.url);
+
+  const html = `
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300&display=swap');
+.movie-post{background:#fff;color:#222;font-family:'Poppins',sans-serif;padding:20px;border-radius:12px;max-width:800px;margin:auto;box-shadow:0 0 10px rgba(0,0,0,0.1);}
+.movie-post img{width:100%;border-radius:10px;margin-bottom:10px;}
+.movie-post h2{color:#d32f2f;font-weight:400;}
+.movie-post p{line-height:1.6;font-size:14px;}
+.download-btn{display:inline-block;background:#d32f2f;color:#fff;padding:10px 15px;margin:5px 5px 5px 0;border-radius:6px;text-decoration:none;font-size:14px;transition:0.3s;}
+.download-btn:hover{background:#388e3c;}
+.screenshots img{width:100%;margin-top:10px;border-radius:10px;}
+</style>
+
+<div class="movie-post">
+  <h2>${title} (${year})</h2>
+  <img src="${poster}" alt="${title}">
+  <p><strong>Genre:</strong> ${genres}</p>
+  <p><strong>IMDb:</strong> ⭐ ${rating}/10</p>
+  <p><strong>Release:</strong> ${release}</p>
+  <p><strong>Overview:</strong> ${overview}</p>
+  ${review ? `<p><strong>Review:</strong> ${review}</p>` : ""}
+  <div class="screenshots">
+    ${screenshots.map(s => `<img src="${s}" alt="Screenshot">`).join("")}
+  </div>
+  <h3>📥 Download Links:</h3>
+  ${downloads.map(d => `<a href="${d.url}" class="download-btn">${d.name}</a>`).join("")}
+</div>`;
+
+  document.getElementById("output").textContent = html.trim();
+});
+
+document.getElementById("copyBtn").addEventListener("click", () => {
+  const text = document.getElementById("output").textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById("copyBtn");
+    btn.classList.add("copied");
+    setTimeout(() => btn.classList.remove("copied"), 1000);
+  });
+});
+</script>
+
+</body>
+</html>
