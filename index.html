@@ -1,254 +1,129 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TMDB Post Generator</title>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
-body {
-  background: #0e0e0e;
-  color: #f5f5f5;
-  font-family: 'Poppins', sans-serif;
-  margin: 0;
-  padding: 20px;
-}
-h1 {
-  text-align: center;
-  color: #ff5252;
-  font-weight: 500;
-}
-input, textarea, button {
-  width: 100%;
-  padding: 10px;
-  margin-bottom: 10px;
-  border-radius: 6px;
-  border: 1px solid #333;
-  background: #1a1a1a;
-  color: #f5f5f5;
-  font-family: 'Poppins', sans-serif;
-  font-size: 14px;
-}
-button {
-  background: #b71c1c;
-  color: #fff;
-  border: none;
-  cursor: pointer;
-  font-weight: 500;
-  transition: background 0.3s;
-}
-button:hover {
-  background: #2e7d32;
-}
-.add-btn {
-  background: #444;
-}
-.code-box {
-  background: #1a1a1a;
-  border: 1px solid #333;
-  border-radius: 6px;
-  padding: 15px;
-  white-space: pre-wrap;
-  color: #f5f5f5;
-  font-family: monospace;
-}
-.copy-btn {
-  background: #2e7d32;
-  margin-top: 10px;
-  position: relative;
-}
-.copy-btn span {
-  position: absolute;
-  right: 10px;
-  top: 8px;
-  font-size: 13px;
-  color: #fff;
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-.copy-btn.copied span {
-  opacity: 1;
-}
-.download-field, .screenshot-field {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 8px;
-}
-.download-field input, .screenshot-field input {
-  flex: 1;
-}
-#screenshotPreview {
-  display: grid;
-  grid-template-columns: repeat(auto-fill,minmax(150px,1fr));
-  gap: 10px;
-  margin-top: 10px;
-}
-#screenshotPreview img {
-  width: 100%;
-  border-radius: 8px;
-  box-shadow: 0 0 6px rgba(255,255,255,0.1);
-}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TMDB Post Generator</title>
+  <link href="https://tituhh.github.io/css/cdn/style.css" rel="stylesheet">
 </head>
 <body>
+  <div class="container">
+    <h2>🎬 TMDB Post Generator</h2>
 
-<h1>🎬 TMDB Post Generator</h1>
-<input type="text" id="tmdbId" placeholder="Enter TMDB Movie ID">
-<button id="fetchBtn">Fetch Movie</button>
-
-<div id="movieFields" style="display:none;">
-  <input id="title" placeholder="Title">
-  <input id="year" placeholder="Year">
-  <input id="genres" placeholder="Genres">
-  <input id="rating" placeholder="IMDb Rating">
-  <input id="release" placeholder="Release Date">
-  <input id="duration" placeholder="Duration (optional)">
-  <input id="poster" placeholder="Poster URL">
-  <textarea id="overview" rows="3" placeholder="Overview"></textarea>
-  <textarea id="customReview" rows="3" placeholder="Custom Review"></textarea>
-
-  <h3>Screenshots (auto + manual)</h3>
-  <div id="screenshotPreview"></div>
-  <div id="screenshots">
-    <div class="screenshot-field">
-      <input type="text" placeholder="Add extra Screenshot URL">
+    <div class="input-group">
+      <input type="text" id="tmdbId" placeholder="Enter Movie Name or TMDB ID">
+      <button id="fetchBtn">Fetch</button>
     </div>
-  </div>
-  <button class="add-btn" id="addShot">+ Screenshot</button>
 
-  <h3>Download Links</h3>
-  <div id="downloadButtons">
-    <div class="download-field">
-      <input type="text" placeholder="Server Name (e.g. Drive)">
-      <input type="text" placeholder="Download URL">
+    <div id="movieDetails" class="details"></div>
+
+    <div id="downloadSection" class="downloads">
+      <h3>Add Download Links</h3>
+      <div id="downloadLinks"></div>
+      <button id="addDownloadBtn">+ Add Download Button</button>
     </div>
+
+    <button id="generateBtn">Generate HTML</button>
+
+    <textarea id="output" rows="10" readonly></textarea>
+    <button id="copyBtn">Copy HTML</button>
   </div>
-  <button class="add-btn" id="addBtn">+ Server</button>
-  <button id="generateBtn">Generate Post</button>
-</div>
 
-<h2>Generated HTML:</h2>
-<pre class="code-box" id="output"></pre>
-<button class="copy-btn" id="copyBtn">Copy HTML <span>Copied!</span></button>
+  <script>
+  const apiKey = "55b11132b5aef36e8376418dcce756f2";
+  const fetchBtn = document.getElementById("fetchBtn");
+  const generateBtn = document.getElementById("generateBtn");
+  const copyBtn = document.getElementById("copyBtn");
+  const output = document.getElementById("output");
+  const movieDetails = document.getElementById("movieDetails");
+  const downloadLinks = document.getElementById("downloadLinks");
 
-<script>
-const TMDB_API_KEY = "55b11132b5aef36e8376418dcce756f2"; // Replace with your TMDB API key
+  let movieData = null;
 
-document.getElementById("fetchBtn").addEventListener("click", async () => {
-  const id = document.getElementById("tmdbId").value.trim();
-  if (!id) return alert("Enter TMDB ID");
+  document.getElementById("addDownloadBtn").addEventListener("click", () => {
+    const div = document.createElement("div");
+    div.className = "download-field";
+    div.innerHTML = `
+      <input type="text" placeholder="Server Name" class="server-name">
+      <input type="url" placeholder="Download URL" class="server-link">
+    `;
+    downloadLinks.appendChild(div);
+  });
 
-  try {
-    const [infoRes, imgRes] = await Promise.all([
-      fetch(`https://api.themoviedb.org/3/movie/${id}?api_key=${TMDB_API_KEY}&language=en-US`),
-      fetch(`https://api.themoviedb.org/3/movie/${id}/images?api_key=${TMDB_API_KEY}`)
-    ]);
+  fetchBtn.addEventListener("click", async () => {
+    const query = document.getElementById("tmdbId").value.trim();
+    if (!query) return alert("Enter a Movie Name or TMDB ID");
 
-    const data = await infoRes.json();
-    const imgs = await imgRes.json();
+    let url;
+    if (isNaN(query)) {
+      url = `https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${query}`;
+    } else {
+      url = `https://api.themoviedb.org/3/movie/${query}?api_key=${apiKey}`;
+    }
 
-    if (data.success === false) return alert("Invalid TMDB ID or API Key!");
+    const res = await fetch(url);
+    const data = await res.json();
 
-    window.movieData = data;
-    window.screens = imgs.backdrops?.slice(0,5) || [];
+    movieData = isNaN(query) ? data.results[0] : data;
 
-    document.getElementById("movieFields").style.display = "block";
-    document.getElementById("title").value = data.title || "";
-    document.getElementById("year").value = data.release_date?.split("-")[0] || "";
-    document.getElementById("genres").value = data.genres.map(g => g.name).join(", ");
-    document.getElementById("rating").value = data.vote_average;
-    document.getElementById("release").value = data.release_date;
-    document.getElementById("poster").value = "https://image.tmdb.org/t/p/w500" + data.poster_path;
-    document.getElementById("overview").value = data.overview;
+    if (!movieData) return alert("Movie not found!");
 
-    const preview = document.getElementById("screenshotPreview");
-    preview.innerHTML = screens.map(s =>
-      `<img src="https://image.tmdb.org/t/p/w500${s.file_path}" alt="screenshot">`
-    ).join("");
+    const screenshotsUrl = `https://api.themoviedb.org/3/movie/${movieData.id}/images?api_key=${apiKey}`;
+    const screenshotsRes = await fetch(screenshotsUrl);
+    const screenshotsData = await screenshotsRes.json();
 
-  } catch (err) {
-    alert("Error fetching TMDB data.");
-  }
-});
+    const screenshots = screenshotsData.backdrops.slice(0, 4).map(img => 
+      `https://image.tmdb.org/t/p/w500${img.file_path}`
+    );
 
-document.getElementById("addBtn").addEventListener("click", () => {
-  const div = document.createElement("div");
-  div.className = "download-field";
-  div.innerHTML = `<input type="text" placeholder="Server Name"><input type="text" placeholder="Download URL">`;
-  document.getElementById("downloadButtons").appendChild(div);
-});
+    movieDetails.innerHTML = `
+      <img src="https://image.tmdb.org/t/p/w500${movieData.poster_path}" alt="${movieData.title}">
+      <p><strong>Title:</strong> ${movieData.title}</p>
+      <p><strong>Release:</strong> ${movieData.release_date}</p>
+      <p><strong>Rating:</strong> ⭐ ${movieData.vote_average}</p>
+      <p><strong>Overview:</strong> ${movieData.overview}</p>
+      <div class="screenshots">
+        ${screenshots.map(s => `<img src="${s}" alt="Screenshot">`).join("")}
+      </div>
+    `;
+  });
 
-document.getElementById("addShot").addEventListener("click", () => {
-  const div = document.createElement("div");
-  div.className = "screenshot-field";
-  div.innerHTML = `<input type="text" placeholder="Screenshot Image URL">`;
-  document.getElementById("screenshots").appendChild(div);
-});
+  generateBtn.addEventListener("click", () => {
+    if (!movieData) return alert("Fetch movie details first!");
 
-document.getElementById("generateBtn").addEventListener("click", () => {
-  const title = document.getElementById("title").value;
-  const year = document.getElementById("year").value;
-  const genres = document.getElementById("genres").value;
-  const rating = document.getElementById("rating").value;
-  const release = document.getElementById("release").value;
-  const duration = document.getElementById("duration").value;
-  const poster = document.getElementById("poster").value;
-  const overview = document.getElementById("overview").value;
-  const review = document.getElementById("customReview").value;
+    const servers = [...document.querySelectorAll(".download-field")].map(div => {
+      const name = div.querySelector(".server-name").value;
+      const link = div.querySelector(".server-link").value;
+      return name && link ? `<a href="${link}" class="download-btn">${name}</a>` : "";
+    }).join("\n");
 
-  const screenshots = [
-    ...screens.map(s => "https://image.tmdb.org/t/p/w500" + s.file_path),
-    ...[...document.querySelectorAll("#screenshots input")].map(i => i.value).filter(v => v)
-  ];
+    const screenshots = [...movieDetails.querySelectorAll(".screenshots img")]
+      .map(img => `<img src="${img.src}" alt="Screenshot">`).join("\n");
 
-  const downloads = [...document.querySelectorAll("#downloadButtons .download-field")].map(f => {
-    const [name, url] = f.querySelectorAll("input");
-    return { name: name.value, url: url.value };
-  }).filter(d => d.name && d.url);
-
-  const html = `
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
-.movie-post{background:#121212;color:#f5f5f5;font-family:'Poppins',sans-serif;padding:20px;border-radius:12px;max-width:850px;margin:auto;box-shadow:0 0 15px rgba(0,0,0,0.5);line-height:1.6;}
-.movie-post img{width:100%;border-radius:10px;margin-bottom:10px;}
-.movie-post h2{color:#ff5252;font-weight:500;text-align:center;}
-.movie-post p{font-size:14px;margin:6px 0;}
-.movie-post p strong{font-weight:600;color:#fff;}
-.download-btn{display:inline-block;background:#b71c1c;color:#fff;padding:10px 15px;margin:8px 6px 0 0;border-radius:6px;text-decoration:none;font-size:14px;transition:0.3s;font-weight:500;}
-.download-btn:hover{background:#2e7d32;}
-.screenshots{margin-top:15px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;}
-.screenshots img{width:100%;border-radius:8px;box-shadow:0 0 8px rgba(255,255,255,0.05);transition:transform 0.3s;}
-.screenshots img:hover{transform:scale(1.03);}
-</style>
+    const html = `
+<link href="https://tituhh.github.io/css/cdn/style.css" rel="stylesheet">
 
 <div class="movie-post">
-  <h2>🎬 ${title} (${year})</h2>
-  <img src="${poster}" alt="${title}">
-  <p><strong>Genre:</strong> ${genres}</p>
-  <p><strong>IMDb:</strong> ⭐ ${rating}/10</p>
-  <p><strong>Release:</strong> ${release}</p>
-  ${duration ? `<p><strong>Duration:</strong> ${duration}</p>` : ""}
-  <p><strong>Overview:</strong> ${overview}</p>
-  ${review ? `<p><strong>Review:</strong> ${review}</p>` : ""}
-  <div class="screenshots">
-    ${screenshots.map(s => `<img src="${s}" alt="Screenshot">`).join("")}
-  </div>
-  <h3 style="margin-top:20px;color:#ff5252;">📥 Download Links:</h3>
-  ${downloads.map(d => `<a href="${d.url}" class="download-btn">${d.name}</a>`).join("")}
+  <h2>🎬 ${movieData.title} (${movieData.release_date?.split("-")[0]})</h2>
+  <img src="https://image.tmdb.org/t/p/w500${movieData.poster_path}" alt="${movieData.title}">
+  <p><strong>Genre:</strong> ${movieData.genre_ids?.join(", ") || "N/A"}</p>
+  <p><strong>IMDb:</strong> ⭐ ${movieData.vote_average}</p>
+  <p><strong>Release:</strong> ${movieData.release_date}</p>
+  <p><strong>Overview:</strong> ${movieData.overview}</p>
+
+  <div class="screenshots">${screenshots}</div>
+  <h3>📥 Download Links:</h3>
+  ${servers}
 </div>`;
 
-  document.getElementById("output").textContent = html.trim();
-});
-
-document.getElementById("copyBtn").addEventListener("click", () => {
-  const text = document.getElementById("output").textContent;
-  navigator.clipboard.writeText(text).then(() => {
-    const btn = document.getElementById("copyBtn");
-    btn.classList.add("copied");
-    setTimeout(() => btn.classList.remove("copied"), 1000);
+    output.value = html.trim();
   });
-});
-</script>
 
+  copyBtn.addEventListener("click", () => {
+    output.select();
+    document.execCommand("copy");
+    alert("HTML Copied!");
+  });
+  </script>
 </body>
 </html>
