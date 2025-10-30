@@ -35,12 +35,14 @@
       gap: 10px;
       margin-bottom: 20px;
     }
-    input {
-      flex: 1;
+    input, textarea, select {
+      width: 100%;
       padding: 10px;
       border-radius: 6px;
       border: none;
       outline: none;
+      background: #121212;
+      color: #f5f5f5;
     }
     button {
       background: #b71c1c;
@@ -51,12 +53,13 @@
       cursor: pointer;
       transition: 0.3s;
     }
-    button:hover {
-      background: #2e7d32;
-    }
+    button:hover { background: #2e7d32; }
     #movieDetails img {
       width: 100%;
       border-radius: 10px;
+      margin-bottom: 10px;
+    }
+    .field {
       margin-bottom: 10px;
     }
     .screenshots {
@@ -69,14 +72,8 @@
       width: 100%;
       border-radius: 8px;
     }
-    textarea {
-      width: 100%;
+    textarea#output {
       height: 200px;
-      background: #121212;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      padding: 10px;
       margin-top: 15px;
       resize: none;
     }
@@ -89,12 +86,6 @@
       gap: 10px;
       margin-bottom: 8px;
     }
-    .download-field input {
-      flex: 1;
-      padding: 8px;
-      border-radius: 6px;
-      border: none;
-    }
   </style>
 </head>
 <body>
@@ -106,9 +97,9 @@
       <button id="fetchBtn">Fetch</button>
     </div>
 
-    <div id="movieDetails" class="details"></div>
+    <div id="movieDetails"></div>
 
-    <div id="downloadSection" class="downloads">
+    <div id="downloadSection">
       <h3>Add Download Links</h3>
       <div id="downloadLinks"></div>
       <button id="addDownloadBtn">+ Add Download Button</button>
@@ -116,7 +107,7 @@
 
     <button id="generateBtn">Generate HTML</button>
 
-    <textarea id="output" rows="10" readonly></textarea>
+    <textarea id="output" readonly></textarea>
     <button id="copyBtn">Copy HTML</button>
   </div>
 
@@ -130,6 +121,7 @@
   const downloadLinks = document.getElementById("downloadLinks");
 
   let movieData = null;
+  let screenshots = [];
 
   document.getElementById("addDownloadBtn").addEventListener("click", () => {
     const div = document.createElement("div");
@@ -154,24 +146,32 @@
 
     const res = await fetch(url);
     const data = await res.json();
-
     movieData = isNaN(query) ? data.results[0] : data;
     if (!movieData) return alert("Movie not found!");
 
-    const screenshotsUrl = \`https://api.themoviedb.org/3/movie/\${movieData.id}/images?api_key=\${apiKey}\`;
-    const screenshotsRes = await fetch(screenshotsUrl);
-    const screenshotsData = await screenshotsRes.json();
+    const fullDataRes = await fetch(\`https://api.themoviedb.org/3/movie/\${movieData.id}?api_key=\${apiKey}&append_to_response=credits\`);
+    const fullData = await fullDataRes.json();
+    movieData = fullData;
 
-    const screenshots = screenshotsData.backdrops.slice(0, 4).map(img => 
-      \`https://image.tmdb.org/t/p/w500\${img.file_path}\`
-    );
+    const screenshotsRes = await fetch(\`https://api.themoviedb.org/3/movie/\${movieData.id}/images?api_key=\${apiKey}\`);
+    const screenshotsData = await screenshotsRes.json();
+    screenshots = screenshotsData.backdrops.slice(0, 4).map(img => \`https://image.tmdb.org/t/p/w500\${img.file_path}\`);
+
+    const genres = movieData.genres?.map(g => g.name).join(", ") || "N/A";
+    const cast = movieData.credits?.cast.slice(0, 5).map(c => c.name).join(", ") || "N/A";
+    const director = movieData.credits?.crew.find(c => c.job === "Director")?.name || "N/A";
 
     movieDetails.innerHTML = \`
       <img src="https://image.tmdb.org/t/p/w500\${movieData.poster_path}" alt="\${movieData.title}">
-      <p><strong>Title:</strong> \${movieData.title}</p>
-      <p><strong>Release:</strong> \${movieData.release_date}</p>
-      <p><strong>Rating:</strong> ⭐ \${movieData.vote_average}</p>
-      <p><strong>Overview:</strong> \${movieData.overview}</p>
+      <div class="field"><strong>Title:</strong> <input type="text" id="title" value="\${movieData.title}"></div>
+      <div class="field"><strong>Genre:</strong> <input type="text" id="genre" value="\${genres}"></div>
+      <div class="field"><strong>IMDb:</strong> <input type="text" id="imdb" value="\${movieData.vote_average}"></div>
+      <div class="field"><strong>Release:</strong> <input type="text" id="release" value="\${movieData.release_date}"></div>
+      <div class="field"><strong>Duration:</strong> <input type="text" id="duration" value="\${movieData.runtime} min"></div>
+      <div class="field"><strong>Language:</strong> <input type="text" id="language" value="\${movieData.original_language.toUpperCase()}"></div>
+      <div class="field"><strong>Director:</strong> <input type="text" id="director" value="\${director}"></div>
+      <div class="field"><strong>Cast:</strong> <input type="text" id="cast" value="\${cast}"></div>
+      <div class="field"><strong>Overview:</strong> <textarea id="overview">\${movieData.overview}</textarea></div>
       <div class="screenshots">
         \${screenshots.map(s => \`<img src="\${s}" alt="Screenshot">\`).join("")}
       </div>
@@ -181,29 +181,40 @@
   generateBtn.addEventListener("click", () => {
     if (!movieData) return alert("Fetch movie details first!");
 
+    const title = document.getElementById("title").value;
+    const genre = document.getElementById("genre").value;
+    const imdb = document.getElementById("imdb").value;
+    const release = document.getElementById("release").value;
+    const duration = document.getElementById("duration").value;
+    const language = document.getElementById("language").value;
+    const director = document.getElementById("director").value;
+    const cast = document.getElementById("cast").value;
+    const overview = document.getElementById("overview").value;
+
     const servers = [...document.querySelectorAll(".download-field")].map(div => {
       const name = div.querySelector(".server-name").value;
       const link = div.querySelector(".server-link").value;
       return name && link ? \`<a href="\${link}" class="download-btn">\${name}</a>\` : "";
     }).join("\\n");
 
-    const screenshots = [...movieDetails.querySelectorAll(".screenshots img")]
-      .map(img => \`<img src="\${img.src}" alt="Screenshot">\`).join("\\n");
+    const screenshotsHtml = screenshots.map(src => \`<img src="\${src}" alt="Screenshot">\`).join("\\n");
 
     const html = \`
 <link href="https://tituhh.github.io/css/cdn/style.css" rel="stylesheet">
 
 <div class="movie-post">
-  <h2>🎬 \${movieData.title} (\${movieData.release_date?.split("-")[0]})</h2>
-  <img src="https://image.tmdb.org/t/p/w500\${movieData.poster_path}" alt="\${movieData.title}">
-  <p><strong>Genre:</strong> \${movieData.genre_ids?.join(", ") || "N/A"}</p>
-  <p><strong>IMDb:</strong> ⭐ \${movieData.vote_average}</p>
-  <p><strong>Release:</strong> \${movieData.release_date}</p>
-  <p><strong>Duration:</strong> \${movieData.runtime || "N/A"} min</p>
-  <p><strong>Language:</strong> \${movieData.original_language?.toUpperCase() || "N/A"}</p>
-  <p><strong>Overview:</strong> \${movieData.overview}</p>
+  <h2>🎬 \${title} (\${release.split("-")[0]})</h2>
+  <img src="https://image.tmdb.org/t/p/w500\${movieData.poster_path}" alt="\${title}">
+  <p><strong>Genre:</strong> \${genre}</p>
+  <p><strong>IMDb:</strong> ⭐ \${imdb}</p>
+  <p><strong>Release:</strong> \${release}</p>
+  <p><strong>Duration:</strong> \${duration}</p>
+  <p><strong>Language:</strong> \${language}</p>
+  <p><strong>Director:</strong> \${director}</p>
+  <p><strong>Cast:</strong> \${cast}</p>
+  <p><strong>Overview:</strong> \${overview}</p>
 
-  <div class="screenshots">\${screenshots}</div>
+  <div class="screenshots">\${screenshotsHtml}</div>
   <h3>📥 Download Links:</h3>
   \${servers}
 </div>\`;
