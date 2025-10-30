@@ -8,8 +8,8 @@
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
     body {
       font-family: 'Poppins', sans-serif;
-      background: #0e0e0e;
-      color: #f5f5f5;
+      background: #f5f5f5;
+      color: #222;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -18,16 +18,17 @@
       padding: 20px;
     }
     .container {
-      background: #1a1a1a;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 0 15px rgba(0,0,0,0.5);
+      background: #fff;
+      color: #000;
+      padding: 25px;
+      border-radius: 16px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
       max-width: 850px;
       width: 100%;
     }
     h2 {
       text-align: center;
-      color: #ff5252;
+      color: #c62828;
       margin-bottom: 20px;
     }
     .input-group {
@@ -35,32 +36,47 @@
       gap: 10px;
       margin-bottom: 20px;
     }
-    input, textarea, select {
+    input, textarea {
       width: 100%;
       padding: 10px;
       border-radius: 6px;
-      border: none;
-      outline: none;
-      background: #121212;
-      color: #f5f5f5;
+      border: 1px solid #ccc;
+      background: #fafafa;
+      color: #111;
+      font-size: 14px;
     }
+    textarea { resize: vertical; }
     button {
-      background: #b71c1c;
-      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: #1976d2;
+      color: white;
       border: none;
       padding: 10px 16px;
-      border-radius: 6px;
+      border-radius: 8px;
       cursor: pointer;
       transition: 0.3s;
+      font-weight: 600;
     }
-    button:hover { background: #2e7d32; }
+    button:hover { background: #1565c0; }
+    #generateBtn { background: #2e7d32; }
+    #generateBtn:hover { background: #1b5e20; }
+    #copyBtn { background: #f57c00; }
+    #copyBtn:hover { background: #ef6c00; }
     #movieDetails img {
       width: 100%;
       border-radius: 10px;
       margin-bottom: 10px;
     }
     .field {
-      margin-bottom: 10px;
+      margin-bottom: 12px;
+    }
+    .field strong {
+      display: block;
+      margin-bottom: 4px;
+      color: #444;
     }
     .screenshots {
       display: grid;
@@ -77,15 +93,12 @@
       margin-top: 15px;
       resize: none;
     }
-    #copyBtn {
-      width: 100%;
-      margin-top: 10px;
-    }
     .download-field {
       display: flex;
       gap: 10px;
       margin-bottom: 8px;
     }
+    h3 { color: #333; margin-top: 20px; }
   </style>
 </head>
 <body>
@@ -93,8 +106,8 @@
     <h2>🎬 TMDB Post Generator</h2>
 
     <div class="input-group">
-      <input type="text" id="tmdbId" placeholder="Enter Movie Name or TMDB ID">
-      <button id="fetchBtn">Fetch</button>
+      <input type="text" id="tmdbId" placeholder="Enter Movie/TV Name or TMDB ID">
+      <button id="fetchBtn">☀️ Fetch</button>
     </div>
 
     <div id="movieDetails"></div>
@@ -105,10 +118,9 @@
       <button id="addDownloadBtn">+ Add Download Button</button>
     </div>
 
-    <button id="generateBtn">Generate HTML</button>
-
+    <button id="generateBtn">✨ Generate HTML</button>
     <textarea id="output" readonly></textarea>
-    <button id="copyBtn">Copy HTML</button>
+    <button id="copyBtn">📋 Copy HTML</button>
   </div>
 
   <script>
@@ -135,51 +147,59 @@
 
   fetchBtn.addEventListener("click", async () => {
     const query = document.getElementById("tmdbId").value.trim();
-    if (!query) return alert("Enter a Movie Name or TMDB ID");
+    if (!query) return alert("Enter a Movie or TV Name / ID");
 
-    let url;
+    let url, type = "movie";
     if (isNaN(query)) {
-      url = \`https://api.themoviedb.org/3/search/movie?api_key=\${apiKey}&query=\${query}\`;
+      url = \`https://api.themoviedb.org/3/search/multi?api_key=\${apiKey}&query=\${query}\`;
     } else {
+      // try movie first, fallback to tv
       url = \`https://api.themoviedb.org/3/movie/\${query}?api_key=\${apiKey}\`;
     }
 
-    const res = await fetch(url);
-    const data = await res.json();
-    movieData = isNaN(query) ? data.results[0] : data;
-    if (!movieData) return alert("Movie not found!");
+    let res = await fetch(url);
+    let data = await res.json();
 
-    const fullDataRes = await fetch(\`https://api.themoviedb.org/3/movie/\${movieData.id}?api_key=\${apiKey}&append_to_response=credits\`);
-    const fullData = await fullDataRes.json();
-    movieData = fullData;
+    if (data.success === false || !data.results?.length) {
+      // fallback to tv if movie not found
+      res = await fetch(\`https://api.themoviedb.org/3/tv/\${query}?api_key=\${apiKey}\`);
+      data = await res.json();
+      type = "tv";
+    } else if (data.results) {
+      const first = data.results[0];
+      type = first.media_type === "tv" ? "tv" : "movie";
+      res = await fetch(\`https://api.themoviedb.org/3/\${type}/\${first.id}?api_key=\${apiKey}&append_to_response=credits\`);
+      data = await res.json();
+    } else {
+      type = "movie";
+    }
 
-    const screenshotsRes = await fetch(\`https://api.themoviedb.org/3/movie/\${movieData.id}/images?api_key=\${apiKey}\`);
+    movieData = data;
+    const screenshotsRes = await fetch(\`https://api.themoviedb.org/3/\${type}/\${movieData.id}/images?api_key=\${apiKey}\`);
     const screenshotsData = await screenshotsRes.json();
-    screenshots = screenshotsData.backdrops.slice(0, 4).map(img => \`https://image.tmdb.org/t/p/w500\${img.file_path}\`);
+    screenshots = screenshotsData.backdrops?.slice(0, 4).map(img => \`https://image.tmdb.org/t/p/w500\${img.file_path}\`) || [];
 
     const genres = movieData.genres?.map(g => g.name).join(", ") || "N/A";
-    const cast = movieData.credits?.cast.slice(0, 5).map(c => c.name).join(", ") || "N/A";
-    const director = movieData.credits?.crew.find(c => c.job === "Director")?.name || "N/A";
+    const cast = movieData.credits?.cast?.slice(0, 5).map(c => c.name).join(", ") || "N/A";
+    const director = movieData.credits?.crew?.find(c => c.job === "Director")?.name || "N/A";
 
     movieDetails.innerHTML = \`
-      <img src="https://image.tmdb.org/t/p/w500\${movieData.poster_path}" alt="\${movieData.title}">
-      <div class="field"><strong>Title:</strong> <input type="text" id="title" value="\${movieData.title}"></div>
+      <img src="https://image.tmdb.org/t/p/w500\${movieData.poster_path}" alt="\${movieData.title || movieData.name}">
+      <div class="field"><strong>Title:</strong> <input type="text" id="title" value="\${movieData.title || movieData.name}"></div>
       <div class="field"><strong>Genre:</strong> <input type="text" id="genre" value="\${genres}"></div>
       <div class="field"><strong>IMDb:</strong> <input type="text" id="imdb" value="\${movieData.vote_average}"></div>
-      <div class="field"><strong>Release:</strong> <input type="text" id="release" value="\${movieData.release_date}"></div>
-      <div class="field"><strong>Duration:</strong> <input type="text" id="duration" value="\${movieData.runtime} min"></div>
-      <div class="field"><strong>Language:</strong> <input type="text" id="language" value="\${movieData.original_language.toUpperCase()}"></div>
+      <div class="field"><strong>Release:</strong> <input type="text" id="release" value="\${movieData.release_date || movieData.first_air_date || ''}"></div>
+      <div class="field"><strong>Duration:</strong> <input type="text" id="duration" value="\${movieData.runtime || (movieData.episode_run_time?.[0] || '')} min"></div>
+      <div class="field"><strong>Language:</strong> <input type="text" id="language" value="\${movieData.original_language?.toUpperCase() || ''}"></div>
       <div class="field"><strong>Director:</strong> <input type="text" id="director" value="\${director}"></div>
       <div class="field"><strong>Cast:</strong> <input type="text" id="cast" value="\${cast}"></div>
-      <div class="field"><strong>Overview:</strong> <textarea id="overview">\${movieData.overview}</textarea></div>
-      <div class="screenshots">
-        \${screenshots.map(s => \`<img src="\${s}" alt="Screenshot">\`).join("")}
-      </div>
+      <div class="field"><strong>Overview:</strong> <textarea id="overview">\${movieData.overview || ''}</textarea></div>
+      <div class="screenshots">\${screenshots.map(s => \`<img src="\${s}" alt="Screenshot">\`).join("")}</div>
     \`;
   });
 
   generateBtn.addEventListener("click", () => {
-    if (!movieData) return alert("Fetch movie details first!");
+    if (!movieData) return alert("Fetch movie/TV details first!");
 
     const title = document.getElementById("title").value;
     const genre = document.getElementById("genre").value;
@@ -203,7 +223,7 @@
 <link href="https://tituhh.github.io/css/cdn/style.css" rel="stylesheet">
 
 <div class="movie-post">
-  <h2>🎬 \${title} (\${release.split("-")[0]})</h2>
+  <h2>🎬 \${title} (\${release?.split("-")[0] || ""})</h2>
   <img src="https://image.tmdb.org/t/p/w500\${movieData.poster_path}" alt="\${title}">
   <p><strong>Genre:</strong> \${genre}</p>
   <p><strong>IMDb:</strong> ⭐ \${imdb}</p>
@@ -225,7 +245,7 @@
   copyBtn.addEventListener("click", () => {
     output.select();
     document.execCommand("copy");
-    alert("HTML Copied!");
+    alert("✅ HTML Copied Successfully!");
   });
   </script>
 </body>
