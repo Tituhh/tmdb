@@ -3,77 +3,167 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TMDb Post Generator</title>
+<title>TMDb Post Generator (Movies & Series)</title>
 <link rel="stylesheet" href="https://dktczn.github.io/Dk/cdn/vgpost.css">
 <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 <style>
-  body {font-family: Arial, sans-serif; background:#111; color:#fff; padding:20px;}
-  .post {background:#1a1a1a; padding:20px; border-radius:10px; margin-bottom:20px;}
-  .dbtn {padding:10px 15px; margin:5px; display:inline-block; color:#fff; text-decoration:none; border-radius:5px;}
-  .dbtn1{background:#b22222;} .dbtn2{background:#8b0000;} .dbtn3{background:#ff4500;} .dbtn4{background:#228b22;} .dbtn5{background:#008b8b;}
+body {font-family: Arial, sans-serif; background:#111; color:#fff; padding:20px;}
+label {display:block; margin-top:10px; font-weight:bold;}
+input, textarea {width:100%; padding:8px; margin-top:5px; border-radius:5px; border:none;}
+button {margin-top:15px; padding:10px 15px; border:none; border-radius:5px; cursor:pointer;}
+#generate {background:#28a745; color:#fff;}
+#copy {background:#007bff; color:#fff; margin-left:10px;}
+#output {margin-top:20px; white-space: pre-wrap; background:#222; padding:15px; border-radius:10px;}
+.post img {max-width:100px; margin:5px;}
 </style>
 </head>
 <body>
 
 <h1>TMDb Post Generator</h1>
-<input type="text" id="tmdbId" placeholder="Enter TMDb ID (movie/series)">
-<button onclick="generatePost()">Generate Post</button>
 
-<div id="output"></div>
+<label>TMDb ID (Movie or Series)</label>
+<input type="text" id="tmdbId" placeholder="Enter TMDb ID">
+
+<label>Title</label>
+<input type="text" id="title">
+
+<label>Description</label>
+<textarea id="description" rows="3"></textarea>
+
+<label>IMDb Rating</label>
+<input type="text" id="rating">
+
+<label>Release Year</label>
+<input type="text" id="year">
+
+<label>Language</label>
+<input type="text" id="language">
+
+<label>Quality</label>
+<input type="text" id="quality">
+
+<label>File Size</label>
+<input type="text" id="filesize">
+
+<label>Format</label>
+<input type="text" id="format">
+
+<label>Starcast</label>
+<input type="text" id="starcast">
+
+<label>Duration</label>
+<input type="text" id="duration">
+
+<label>Season</label>
+<input type="text" id="season">
+
+<label>Genres</label>
+<input type="text" id="genres">
+
+<label>Screenshots URLs (comma separated)</label>
+<textarea id="screenshots" rows="3"></textarea>
+
+<label>Download Links (480p,720p,1080p,4K,8K - comma separated)</label>
+<textarea id="downloads" rows="2"></textarea>
+
+<button id="generate">Generate Post</button>
+<button id="copy">Copy HTML</button>
+
+<pre id="output"></pre>
 
 <script>
 const TMDB_API_KEY = '55b11132b5aef36e8376418dcce756f2'; // Replace with your TMDb API Key
 
-async function generatePost() {
+async function fetchTMDb(id) {
+    let data, type;
+    try {
+        let res = await fetch(`https://api.themoviedb.org/3/movie/${id}?api_key=${TMDB_API_KEY}&append_to_response=credits,images`);
+        data = await res.json();
+        type = 'movie';
+        if(data.status_code) throw "Not a movie";
+    } catch {
+        let res = await fetch(`https://api.themoviedb.org/3/tv/${id}?api_key=${TMDB_API_KEY}&append_to_response=credits,images`);
+        data = await res.json();
+        type = 'tv';
+        if(data.status_code) { alert("Invalid TMDb ID"); return; }
+    }
+    return {data, type};
+}
+
+document.getElementById('tmdbId').addEventListener('change', async ()=>{
     const id = document.getElementById('tmdbId').value.trim();
-    if(!id) { alert("Enter TMDb ID!"); return; }
+    if(!id) return;
+    const {data, type} = await fetchTMDb(id);
 
-    // Fetch Movie/TV details
-    let url = `https://api.themoviedb.org/3/movie/${id}?api_key=${TMDB_API_KEY}&append_to_response=credits,videos,images`;
-    let res = await fetch(url);
-    let data = await res.json();
+    // Fill input fields automatically
+    document.getElementById('title').value = data.title || data.name;
+    document.getElementById('description').value = data.overview || '';
+    document.getElementById('rating').value = data.vote_average || '';
+    document.getElementById('year').value = (type==='movie' ? (data.release_date || '').split('-')[0] : (data.first_air_date || '').split('-')[0]) || '';
+    document.getElementById('language').value = data.original_language || '';
+    document.getElementById('starcast').value = (data.credits.cast || []).slice(0,6).map(c=>c.name).join(', ');
+    document.getElementById('duration').value = type==='movie' ? (data.runtime ? data.runtime+' min' : '') : (data.episode_run_time.length>0 ? data.episode_run_time[0]+' min/ep' : '');
+    document.getElementById('season').value = type==='tv' ? (data.number_of_seasons + ' Seasons') : '';
+    document.getElementById('genres').value = (data.genres || []).map(g => g.name).join(', ');
+    document.getElementById('screenshots').value = (data.images.backdrops || []).slice(0,6).map(i=>`https://image.tmdb.org/t/p/w500${i.file_path}`).join(',');
+    document.getElementById('downloads').value = 'Link480p,Link720p,Link1080p,Link4K,Link8K';
+    document.getElementById('quality').value = 'Manual edit';
+    document.getElementById('filesize').value = 'Manual edit';
+    document.getElementById('format').value = 'Manual edit';
+});
 
-    // Build HTML
-    let title = data.title || data.name;
-    let desc = data.overview || 'Description not available';
-    let rating = data.vote_average || 'N/A';
-    let year = data.release_date ? data.release_date.split('-')[0] : 'N/A';
-    let lang = data.original_language || 'N/A';
-    let genres = data.genres.map(g => g.name).join(', ') || 'N/A';
-    let runtime = data.runtime ? data.runtime + ' min' : 'N/A';
-    let poster = data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : '';
-    let screenshots = data.images.backdrops.slice(0,6).map(i=>`https://image.tmdb.org/t/p/w500${i.file_path}`);
-    let starcast = data.credits.cast.slice(0,6).map(c=>c.name).join(', ');
+document.getElementById('generate').addEventListener('click', ()=>{
+    const title = document.getElementById('title').value;
+    const desc = document.getElementById('description').value;
+    const rating = document.getElementById('rating').value;
+    const year = document.getElementById('year').value;
+    const lang = document.getElementById('language').value;
+    const quality = document.getElementById('quality').value;
+    const filesize = document.getElementById('filesize').value;
+    const format = document.getElementById('format').value;
+    const starcast = document.getElementById('starcast').value;
+    const duration = document.getElementById('duration').value;
+    const season = document.getElementById('season').value;
+    const genres = document.getElementById('genres').value;
+    const screenshots = document.getElementById('screenshots').value.split(',').map(s=>s.trim());
+    const downloads = document.getElementById('downloads').value.split(',').map(s=>s.trim());
 
-    let html = `
+    const html = `
 <div class="post dkpost">
   <h2 style="color:yellow;">${title}</h2>
   <p>${desc}</p>
-  <h3 style="color:#ff8800;">Movie Info:</h3>
+  <h3 style="color:#ff8800;">Movie/TV Info:</h3>
   <ul>
-      <li><b>IMDb Rating:</b> <a href="https://www.imdb.com/title/${data.imdb_id}" target="_blank">${rating}</a></li>
+      <li><b>IMDb Rating:</b> ${rating}</li>
       <li><b>Release Year:</b> ${year}</li>
       <li><b>Language:</b> ${lang}</li>
-      <li><b>Quality:</b> Manual admin edit</li>
-      <li><b>File Size:</b> Manual admin edit</li>
-      <li><b>Format:</b> Manual admin edit</li>
+      <li><b>Quality:</b> ${quality}</li>
+      <li><b>File Size:</b> ${filesize}</li>
+      <li><b>Format:</b> ${format}</li>
       <li><b>Starcast:</b> ${starcast}</li>
-      <li><b>Duration:</b> ${runtime}</li>
-      <li><b>Season:</b> N/A</li>
+      <li><b>Duration:</b> ${duration}</li>
+      <li><b>Season:</b> ${season}</li>
   </ul>
   <h2>Tags:</h2><p>${genres}</p>
   <h3>Screenshots must see before downloading</h3>
   ${screenshots.map(s=>`<img src="${s}">`).join('')}
-  <h3>Download this movie</h3>
-  <a href="#" class="dbtn dbtn1"><i class="fa-solid fa-download"></i>⚡480p</a>
-  <a href="#" class="dbtn dbtn2"><i class="fa-solid fa-download"></i>⚡720p</a>
-  <a href="#" class="dbtn dbtn3"><i class="fa-solid fa-download"></i>⚡1080p</a>
-  <a href="#" class="dbtn dbtn4"><i class="fa-solid fa-download"></i>⚡4K</a>
-  <a href="#" class="dbtn dbtn5"><i class="fa-solid fa-download"></i>⚡8K</a>
+  <h3>Download this movie/series</h3>
+  <a href="${downloads[0]||'#'}" class="dbtn dbtn1"><i class="fa-solid fa-download"></i>⚡480p</a>
+  <a href="${downloads[1]||'#'}" class="dbtn dbtn2"><i class="fa-solid fa-download"></i>⚡720p</a>
+  <a href="${downloads[2]||'#'}" class="dbtn dbtn3"><i class="fa-solid fa-download"></i>⚡1080p</a>
+  <a href="${downloads[3]||'#'}" class="dbtn dbtn4"><i class="fa-solid fa-download"></i>⚡4K</a>
+  <a href="${downloads[4]||'#'}" class="dbtn dbtn5"><i class="fa-solid fa-download"></i>⚡8K</a>
 </div>
     `;
-    document.getElementById('output').innerHTML = html;
-}
+
+    document.getElementById('output').textContent = html;
+});
+
+document.getElementById('copy').addEventListener('click', ()=>{
+    const output = document.getElementById('output');
+    navigator.clipboard.writeText(output.textContent).then(()=>alert('Copied to clipboard!'));
+});
 </script>
+
 </body>
 </html>
