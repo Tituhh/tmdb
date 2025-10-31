@@ -8,14 +8,15 @@
 <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 <style>
 body {font-family: Arial, sans-serif; background:#111; color:#fff; padding:20px;}
-label {display:block; margin-top:10px; font-weight:bold;}
+label {display:block; font-weight:bold; margin-top:10px;}
 input, textarea {width:100%; padding:8px; margin-top:5px; border-radius:5px; border:none;}
 button {margin-top:15px; padding:10px 15px; border:none; border-radius:5px; cursor:pointer;}
 #generate {background:#28a745; color:#fff;}
 #copy {background:#007bff; color:#fff; margin-left:10px;}
 #output {margin-top:20px; white-space: pre-wrap; background:#222; padding:15px; border-radius:10px;}
 .post img {max-width:100px; margin:5px;}
-.download-btn {margin-bottom:10px;}
+.download-grid {display:grid; grid-template-columns:1fr 2fr; gap:10px; align-items:center; margin-top:5px;}
+.download-grid input {width:100%;}
 </style>
 </head>
 <body>
@@ -40,27 +41,28 @@ button {margin-top:15px; padding:10px 15px; border:none; border-radius:5px; curs
 <label>Genres</label><input type="text" id="genres">
 <label>Screenshots URLs (comma separated)</label><textarea id="screenshots" rows="3"></textarea>
 
-<!-- Individual Download Buttons -->
-<h3>Download Buttons</h3>
-<div class="download-btn">
-  <label>Button 1 Label</label><input type="text" id="btn1Label" placeholder="480p">
-  <label>Button 1 URL</label><input type="text" id="btn1Url" placeholder="#">
-</div>
-<div class="download-btn">
-  <label>Button 2 Label</label><input type="text" id="btn2Label" placeholder="720p">
-  <label>Button 2 URL</label><input type="text" id="btn2Url" placeholder="#">
-</div>
-<div class="download-btn">
-  <label>Button 3 Label</label><input type="text" id="btn3Label" placeholder="1080p">
-  <label>Button 3 URL</label><input type="text" id="btn3Url" placeholder="#">
-</div>
-<div class="download-btn">
-  <label>Button 4 Label</label><input type="text" id="btn4Label" placeholder="4K">
-  <label>Button 4 URL</label><input type="text" id="btn4Url" placeholder="#">
-</div>
-<div class="download-btn">
-  <label>Button 5 Label</label><input type="text" id="btn5Label" placeholder="8K">
-  <label>Button 5 URL</label><input type="text" id="btn5Url" placeholder="#">
+<h3>Download Buttons (Button Text → URL)</h3>
+<div id="downloadButtons">
+  <div class="download-grid">
+    <input type="text" placeholder="Button Text" id="btn1Label">
+    <input type="text" placeholder="Button URL" id="btn1Url">
+  </div>
+  <div class="download-grid">
+    <input type="text" placeholder="Button Text" id="btn2Label">
+    <input type="text" placeholder="Button URL" id="btn2Url">
+  </div>
+  <div class="download-grid">
+    <input type="text" placeholder="Button Text" id="btn3Label">
+    <input type="text" placeholder="Button URL" id="btn3Url">
+  </div>
+  <div class="download-grid">
+    <input type="text" placeholder="Button Text" id="btn4Label">
+    <input type="text" placeholder="Button URL" id="btn4Url">
+  </div>
+  <div class="download-grid">
+    <input type="text" placeholder="Button Text" id="btn5Label">
+    <input type="text" placeholder="Button URL" id="btn5Url">
+  </div>
 </div>
 
 <button id="generate">Generate Post</button>
@@ -69,7 +71,7 @@ button {margin-top:15px; padding:10px 15px; border:none; border-radius:5px; curs
 <pre id="output"></pre>
 
 <script>
-const TMDB_API_KEY = 'YOUR_TMDB_API_KEY'; // Replace with your TMDb API Key
+const TMDB_API_KEY = '55b11132b5aef36e8376418dcce756f2';
 
 async function fetchTMDb(id) {
     let data, type;
@@ -87,7 +89,7 @@ async function fetchTMDb(id) {
     return {data, type};
 }
 
-// Auto-fill on TMDb ID change
+// Auto-fill on TMDb ID
 document.getElementById('tmdbId').addEventListener('change', async ()=>{
     const id = document.getElementById('tmdbId').value.trim();
     if(!id) return;
@@ -103,7 +105,8 @@ document.getElementById('tmdbId').addEventListener('change', async ()=>{
     document.getElementById('season').value = type==='tv' ? (data.number_of_seasons + ' Seasons') : '';
     document.getElementById('genres').value = (data.genres || []).map(g => g.name).join(', ');
     document.getElementById('screenshots').value = (data.images.backdrops || []).slice(0,6).map(i=>`https://image.tmdb.org/t/p/w500${i.file_path}`).join(',');
-    // Fill default button labels
+
+    // Default button labels
     document.getElementById('btn1Label').value = '480p';
     document.getElementById('btn2Label').value = '720p';
     document.getElementById('btn3Label').value = '1080p';
@@ -127,13 +130,13 @@ document.getElementById('generate').addEventListener('click', ()=>{
     const genres = document.getElementById('genres').value;
     const screenshots = document.getElementById('screenshots').value.split(',').map(s=>s.trim());
 
-    const btns = [
-        {label: document.getElementById('btn1Label').value, url: document.getElementById('btn1Url').value},
-        {label: document.getElementById('btn2Label').value, url: document.getElementById('btn2Url').value},
-        {label: document.getElementById('btn3Label').value, url: document.getElementById('btn3Url').value},
-        {label: document.getElementById('btn4Label').value, url: document.getElementById('btn4Url').value},
-        {label: document.getElementById('btn5Label').value, url: document.getElementById('btn5Url').value}
-    ];
+    const btns = [];
+    for(let i=1;i<=5;i++){
+        btns.push({
+            label: document.getElementById('btn'+i+'Label').value,
+            url: document.getElementById('btn'+i+'Url').value
+        });
+    }
 
     const html = `
 <div class="post dkpost">
@@ -164,8 +167,7 @@ document.getElementById('generate').addEventListener('click', ()=>{
 
 // Copy HTML
 document.getElementById('copy').addEventListener('click', ()=>{
-    const output = document.getElementById('output');
-    navigator.clipboard.writeText(output.textContent).then(()=>alert('Copied to clipboard!'));
+    navigator.clipboard.writeText(document.getElementById('output').textContent).then(()=>alert('Copied!'));
 });
 </script>
 
