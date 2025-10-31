@@ -3,247 +3,77 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TMDB Post Generator</title>
+<title>TMDb Post Generator</title>
 <link rel="stylesheet" href="https://dktczn.github.io/Dk/cdn/vgpost.css">
+<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 <style>
-body {
-  font-family: "Poppins", sans-serif;
-  background: #0e0e0e;
-  color: #f5f5f5;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 20px;
-}
-.container {
-  background: #1a1a1a;
-  padding: 20px;
-  border-radius: 12px;
-  max-width: 700px;
-  width: 100%;
-  box-shadow: 0 0 20px rgba(255,255,255,0.1);
-}
-input, textarea {
-  width: 100%;
-  margin: 8px 0;
-  padding: 10px;
-  border-radius: 8px;
-  border: none;
-  background: #2a2a2a;
-  color: #fff;
-}
-button {
-  background: #ff8800;
-  border: none;
-  padding: 10px 16px;
-  border-radius: 8px;
-  color: #fff;
-  font-weight: bold;
-  cursor: pointer;
-  margin-top: 10px;
-}
-button:hover { background: #ffaa33; }
-.download-group {
-  display: flex;
-  gap: 10px;
-  margin-top: 5px;
-}
-.download-group input {
-  flex: 1;
-}
-#output {
-  background: #111;
-  color: #0f0;
-  padding: 15px;
-  border-radius: 8px;
-  margin-top: 20px;
-  white-space: pre-wrap;
-  font-family: monospace;
-  height: 300px;
-  overflow-y: auto;
-}
-.copy-btn, .save-btn {
-  margin-top: 10px;
-  background: #00897b;
-}
-#preview {
-  margin-top: 15px;
-  background: #222;
-  padding: 10px;
-  border-radius: 8px;
-}
+  body {font-family: Arial, sans-serif; background:#111; color:#fff; padding:20px;}
+  .post {background:#1a1a1a; padding:20px; border-radius:10px; margin-bottom:20px;}
+  .dbtn {padding:10px 15px; margin:5px; display:inline-block; color:#fff; text-decoration:none; border-radius:5px;}
+  .dbtn1{background:#b22222;} .dbtn2{background:#8b0000;} .dbtn3{background:#ff4500;} .dbtn4{background:#228b22;} .dbtn5{background:#008b8b;}
 </style>
 </head>
 <body>
 
-<div class="container">
-  <h2>🎬 TMDB Post Generator</h2>
-  <input type="text" id="tmdbInput" placeholder="Enter TMDB ID or Movie/Series Name">
+<h1>TMDb Post Generator</h1>
+<input type="text" id="tmdbId" placeholder="Enter TMDb ID (movie/series)">
+<button onclick="generatePost()">Generate Post</button>
 
-  <div class="btns">
-    <button id="fetchBtn">🔍 Fetch Info</button>
-    <button id="addMore">➕ Add More</button>
-    <button id="generate">⚡ Generate Post</button>
-  </div>
-
-  <div id="preview"></div>
-
-  <div id="downloadFields">
-    <h3>Download Buttons</h3>
-    <div class="download-group">
-      <input type="text" placeholder="Button Text (e.g. ⚡480p)" class="dl-text">
-      <input type="text" placeholder="Download URL" class="dl-url">
-    </div>
-  </div>
-
-  <h3>Generated HTML Output</h3>
-  <div id="output" contenteditable="true"></div>
-  <button class="copy-btn" onclick="copyOutput()">📋 Copy</button>
-  <button class="save-btn" onclick="downloadHTML()">⬇️ Download HTML</button>
-</div>
+<div id="output"></div>
 
 <script>
-const apiKey = "55b11132b5aef36e8376418dcce756f2";
-const tmdbBase = "https://api.themoviedb.org/3";
-const imgBase = "https://image.tmdb.org/t/p/w500";
-let cachedData = null;
-let cachedType = "movie";
+const TMDB_API_KEY = 'YOUR_TMDB_API_KEY'; // Replace with your TMDb API Key
 
-document.getElementById("addMore").onclick = () => {
-  const container = document.createElement("div");
-  container.className = "download-group";
-  container.innerHTML = `
-    <input type="text" placeholder="Button Text (e.g. ⚡1080p)" class="dl-text">
-    <input type="text" placeholder="Download URL" class="dl-url">
-  `;
-  document.getElementById("downloadFields").appendChild(container);
-};
+async function generatePost() {
+    const id = document.getElementById('tmdbId').value.trim();
+    if(!id) { alert("Enter TMDb ID!"); return; }
 
-// FETCH INFO BUTTON
-document.getElementById("fetchBtn").onclick = async () => {
-  const query = document.getElementById("tmdbInput").value.trim();
-  if (!query) return alert("Enter TMDB ID or Name");
+    // Fetch Movie/TV details
+    let url = `https://api.themoviedb.org/3/movie/${id}?api_key=${TMDB_API_KEY}&append_to_response=credits,videos,images`;
+    let res = await fetch(url);
+    let data = await res.json();
 
-  document.getElementById("preview").innerHTML = "Fetching from TMDB...";
-  let data = null;
-  let type = "movie";
+    // Build HTML
+    let title = data.title || data.name;
+    let desc = data.overview || 'Description not available';
+    let rating = data.vote_average || 'N/A';
+    let year = data.release_date ? data.release_date.split('-')[0] : 'N/A';
+    let lang = data.original_language || 'N/A';
+    let genres = data.genres.map(g => g.name).join(', ') || 'N/A';
+    let runtime = data.runtime ? data.runtime + ' min' : 'N/A';
+    let poster = data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : '';
+    let screenshots = data.images.backdrops.slice(0,6).map(i=>`https://image.tmdb.org/t/p/w500${i.file_path}`);
+    let starcast = data.credits.cast.slice(0,6).map(c=>c.name).join(', ');
 
-  try {
-    if (isNaN(query)) {
-      const movieRes = await fetch(`${tmdbBase}/search/movie?api_key=${apiKey}&query=${encodeURIComponent(query)}`).then(r=>r.json());
-      const tvRes = await fetch(`${tmdbBase}/search/tv?api_key=${apiKey}&query=${encodeURIComponent(query)}`).then(r=>r.json());
-      if (movieRes.results?.[0]) { data = movieRes.results[0]; type = "movie"; }
-      else if (tvRes.results?.[0]) { data = tvRes.results[0]; type = "tv"; }
-    } else {
-      let res = await fetch(`${tmdbBase}/movie/${query}?api_key=${apiKey}`).then(r=>r.json());
-      if (res.success === false) {
-        res = await fetch(`${tmdbBase}/tv/${query}?api_key=${apiKey}`).then(r=>r.json());
-        type = "tv";
-      }
-      data = res;
-    }
-  } catch (e) {
-    document.getElementById("preview").innerHTML = "Error fetching TMDB data.";
-    return;
-  }
-
-  if (!data || data.success === false) {
-    document.getElementById("preview").innerHTML = "No results found.";
-    return;
-  }
-
-  cachedData = data;
-  cachedType = type;
-  const title = data.title || data.name;
-  const desc = data.overview || "No description available.";
-  const year = (data.release_date || data.first_air_date || "").split("-")[0];
-  const lang = data.original_language?.toUpperCase();
-  const genres = data.genres?.map(g=>g.name).join(", ") || "N/A";
-  const img = data.poster_path ? `${imgBase}${data.poster_path}` : "";
-
-  document.getElementById("preview").innerHTML = `
-    <strong>Fetched:</strong><br>
-    <b>Title:</b> ${title}<br>
-    <b>Year:</b> ${year}<br>
-    <b>Language:</b> ${lang}<br>
-    <b>Genres:</b> ${genres}<br>
-    <img src="${img}" width="100%" style="margin-top:10px;border-radius:8px;">
-    <p style="font-size:14px;color:#ccc;">${desc}</p>
-  `;
-};
-
-// GENERATE POST BUTTON
-document.getElementById("generate").onclick = () => {
-  if (!cachedData) return alert("Please fetch info first!");
-
-  const data = cachedData;
-  const type = cachedType;
-  const title = data.title || data.name;
-  const desc = data.overview || "No description available.";
-  const imdb = data.imdb_id ? `https://www.imdb.com/title/${data.imdb_id}` : "#";
-  const year = (data.release_date || data.first_air_date || "").split("-")[0];
-  const lang = data.original_language?.toUpperCase();
-  const duration = type === "movie" ? (data.runtime ? `${data.runtime} min` : "N/A") : (data.episode_run_time?.[0] ? `${data.episode_run_time[0]} min` : "N/A");
-  const genres = data.genres?.map(g=>g.name).join(", ") || "N/A";
-  const poster = data.poster_path ? `${imgBase}${data.poster_path}` : "";
-  const screenshots = [data.backdrop_path ? `${imgBase}${data.backdrop_path}` : poster];
-
-  const downloadTexts = [...document.querySelectorAll(".dl-text")].map(i => i.value.trim()).filter(Boolean);
-  const downloadUrls = [...document.querySelectorAll(".dl-url")].map(i => i.value.trim()).filter(Boolean);
-
-  let downloadButtons = "";
-  for (let i=0; i<downloadTexts.length; i++) {
-    downloadButtons += `<a href="${downloadUrls[i] || '#'}" class="dbtn dbtn${i+1}"><i class="fa-solid fa-download"></i>${downloadTexts[i]}</a>`;
-  }
-
-  let screenshotsHTML = screenshots.map(s=>`<img src="${s}">`).join("");
-
-  const html = `
+    let html = `
 <div class="post dkpost">
   <h2 style="color:yellow;">${title}</h2>
   <p>${desc}</p>
   <h3 style="color:#ff8800;">Movie Info:</h3>
   <ul>
-    <li><b>IMDb Rating:</b> <a href="${imdb}">IMDB Link</a></li>
-    <li><b>Release Year:</b> ${year}</li>
-    <li><b>Language:</b> ${lang}</li>
-    <li><b>Quality:</b> Manual admin edit</li>
-    <li><b>File Size:</b> Manual admin edit</li>
-    <li><b>Format:</b> Manual admin edit</li>
-    <li><b>Starcast:</b> N/A</li>
-    <li><b>Duration:</b> ${duration}</li>
-    <li><b>Season:</b> ${type === "tv" ? (data.number_of_seasons || "N/A") : "N/A"}</li>
+      <li><b>IMDb Rating:</b> <a href="https://www.imdb.com/title/${data.imdb_id}" target="_blank">${rating}</a></li>
+      <li><b>Release Year:</b> ${year}</li>
+      <li><b>Language:</b> ${lang}</li>
+      <li><b>Quality:</b> Manual admin edit</li>
+      <li><b>File Size:</b> Manual admin edit</li>
+      <li><b>Format:</b> Manual admin edit</li>
+      <li><b>Starcast:</b> ${starcast}</li>
+      <li><b>Duration:</b> ${runtime}</li>
+      <li><b>Season:</b> N/A</li>
   </ul>
   <h2>Tags:</h2><p>${genres}</p>
   <h3>Screenshots must see before downloading</h3>
-  ${screenshotsHTML}
+  ${screenshots.map(s=>`<img src="${s}">`).join('')}
   <h3>Download this movie</h3>
-  ${downloadButtons}
+  <a href="#" class="dbtn dbtn1"><i class="fa-solid fa-download"></i>⚡480p</a>
+  <a href="#" class="dbtn dbtn2"><i class="fa-solid fa-download"></i>⚡720p</a>
+  <a href="#" class="dbtn dbtn3"><i class="fa-solid fa-download"></i>⚡1080p</a>
+  <a href="#" class="dbtn dbtn4"><i class="fa-solid fa-download"></i>⚡4K</a>
+  <a href="#" class="dbtn dbtn5"><i class="fa-solid fa-download"></i>⚡8K</a>
 </div>
-<link rel="stylesheet" href="https://dktczn.github.io/Dk/cdn/vgpost.css">
-<script src="https://dktczn.github.io/Dk/cdn/plyrimbd.js"></script>
-  `.trim();
-
-  document.getElementById("output").textContent = html;
-};
-
-// COPY + DOWNLOAD
-function copyOutput() {
-  const text = document.getElementById("output").textContent;
-  navigator.clipboard.writeText(text);
-  alert("✅ HTML copied to clipboard!");
-}
-
-function downloadHTML() {
-  const content = document.getElementById("output").textContent;
-  const blob = new Blob([content], { type: "text/html" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "tmdb-post.html";
-  a.click();
+    `;
+    document.getElementById('output').innerHTML = html;
 }
 </script>
-
-<script src="https://kit.fontawesome.com/a2e0bf0a3c.js" crossorigin="anonymous"></script>
 </body>
 </html>
