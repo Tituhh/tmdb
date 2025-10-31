@@ -66,6 +66,12 @@ button:hover { background: #ffaa33; }
   margin-top: 10px;
   background: #00897b;
 }
+#preview {
+  margin-top: 15px;
+  background: #222;
+  padding: 10px;
+  border-radius: 8px;
+}
 </style>
 </head>
 <body>
@@ -74,6 +80,14 @@ button:hover { background: #ffaa33; }
   <h2>🎬 TMDB Post Generator</h2>
   <input type="text" id="tmdbInput" placeholder="Enter TMDB ID or Movie/Series Name">
 
+  <div class="btns">
+    <button id="fetchBtn">🔍 Fetch Info</button>
+    <button id="addMore">➕ Add More</button>
+    <button id="generate">⚡ Generate Post</button>
+  </div>
+
+  <div id="preview"></div>
+
   <div id="downloadFields">
     <h3>Download Buttons</h3>
     <div class="download-group">
@@ -81,8 +95,6 @@ button:hover { background: #ffaa33; }
       <input type="text" placeholder="Download URL" class="dl-url">
     </div>
   </div>
-  <button id="addMore">➕ Add More</button>
-  <button id="generate">⚡ Generate Post</button>
 
   <h3>Generated HTML Output</h3>
   <div id="output" contenteditable="true"></div>
@@ -94,6 +106,8 @@ button:hover { background: #ffaa33; }
 const apiKey = "55b11132b5aef36e8376418dcce756f2";
 const tmdbBase = "https://api.themoviedb.org/3";
 const imgBase = "https://image.tmdb.org/t/p/w500";
+let cachedData = null;
+let cachedType = "movie";
 
 document.getElementById("addMore").onclick = () => {
   const container = document.createElement("div");
@@ -105,28 +119,65 @@ document.getElementById("addMore").onclick = () => {
   document.getElementById("downloadFields").appendChild(container);
 };
 
-document.getElementById("generate").onclick = async () => {
+// FETCH INFO BUTTON
+document.getElementById("fetchBtn").onclick = async () => {
   const query = document.getElementById("tmdbInput").value.trim();
   if (!query) return alert("Enter TMDB ID or Name");
 
+  document.getElementById("preview").innerHTML = "Fetching from TMDB...";
   let data = null;
   let type = "movie";
-  if (isNaN(query)) {
-    const searchMovie = await fetch(`${tmdbBase}/search/movie?api_key=${apiKey}&query=${encodeURIComponent(query)}`).then(r=>r.json());
-    const searchTV = await fetch(`${tmdbBase}/search/tv?api_key=${apiKey}&query=${encodeURIComponent(query)}`).then(r=>r.json());
-    if (searchMovie.results?.[0]) { data = searchMovie.results[0]; type = "movie"; }
-    else if (searchTV.results?.[0]) { data = searchTV.results[0]; type = "tv"; }
-  } else {
-    let res = await fetch(`${tmdbBase}/movie/${query}?api_key=${apiKey}`).then(r=>r.json());
-    if (res.success === false) {
-      res = await fetch(`${tmdbBase}/tv/${query}?api_key=${apiKey}`).then(r=>r.json());
-      type = "tv";
+
+  try {
+    if (isNaN(query)) {
+      const movieRes = await fetch(`${tmdbBase}/search/movie?api_key=${apiKey}&query=${encodeURIComponent(query)}`).then(r=>r.json());
+      const tvRes = await fetch(`${tmdbBase}/search/tv?api_key=${apiKey}&query=${encodeURIComponent(query)}`).then(r=>r.json());
+      if (movieRes.results?.[0]) { data = movieRes.results[0]; type = "movie"; }
+      else if (tvRes.results?.[0]) { data = tvRes.results[0]; type = "tv"; }
+    } else {
+      let res = await fetch(`${tmdbBase}/movie/${query}?api_key=${apiKey}`).then(r=>r.json());
+      if (res.success === false) {
+        res = await fetch(`${tmdbBase}/tv/${query}?api_key=${apiKey}`).then(r=>r.json());
+        type = "tv";
+      }
+      data = res;
     }
-    data = res;
+  } catch (e) {
+    document.getElementById("preview").innerHTML = "Error fetching TMDB data.";
+    return;
   }
 
-  if (!data || data.success === false) return alert("No results found!");
+  if (!data || data.success === false) {
+    document.getElementById("preview").innerHTML = "No results found.";
+    return;
+  }
 
+  cachedData = data;
+  cachedType = type;
+  const title = data.title || data.name;
+  const desc = data.overview || "No description available.";
+  const year = (data.release_date || data.first_air_date || "").split("-")[0];
+  const lang = data.original_language?.toUpperCase();
+  const genres = data.genres?.map(g=>g.name).join(", ") || "N/A";
+  const img = data.poster_path ? `${imgBase}${data.poster_path}` : "";
+
+  document.getElementById("preview").innerHTML = `
+    <strong>Fetched:</strong><br>
+    <b>Title:</b> ${title}<br>
+    <b>Year:</b> ${year}<br>
+    <b>Language:</b> ${lang}<br>
+    <b>Genres:</b> ${genres}<br>
+    <img src="${img}" width="100%" style="margin-top:10px;border-radius:8px;">
+    <p style="font-size:14px;color:#ccc;">${desc}</p>
+  `;
+};
+
+// GENERATE POST BUTTON
+document.getElementById("generate").onclick = () => {
+  if (!cachedData) return alert("Please fetch info first!");
+
+  const data = cachedData;
+  const type = cachedType;
   const title = data.title || data.name;
   const desc = data.overview || "No description available.";
   const imdb = data.imdb_id ? `https://www.imdb.com/title/${data.imdb_id}` : "#";
@@ -176,10 +227,11 @@ document.getElementById("generate").onclick = async () => {
   document.getElementById("output").textContent = html;
 };
 
+// COPY + DOWNLOAD
 function copyOutput() {
   const text = document.getElementById("output").textContent;
   navigator.clipboard.writeText(text);
-  alert("HTML copied to clipboard!");
+  alert("✅ HTML copied to clipboard!");
 }
 
 function downloadHTML() {
