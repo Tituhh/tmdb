@@ -1,0 +1,19 @@
+{
+  "name": "tmdb-post-generator",
+  "version": "1.0.0",
+  "description": "A Vercel-ready TMDB Post Generator for Blogger with email send via Gmail SMTP",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "start": "vercel dev"
+  },
+  "dependencies": {
+    "axios": "^1.7.4",
+    "nodemailer": "^6.9.13",
+    "dotenv": "^16.4.5"
+  },
+  "engines": {
+    "node": "22.x"
+  },
+  "license": "MIT"
+}
