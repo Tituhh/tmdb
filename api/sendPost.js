@@ -1,40 +1,39 @@
 import nodemailer from "nodemailer";
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Only POST requests allowed" });
-  }
+  if (req.method !== "POST")
+    return res.status(405).json({ message: "Only POST allowed" });
 
-  const { to, title, genres, htmlContent } = req.body;
-
-  if (!to || !title || !htmlContent) {
-    return res.status(400).json({ error: "Missing required fields" });
-  }
+  const { title, type, genres, htmlContent } = req.body;
 
   try {
-    // Create Blogger-compatible subject line (genres only for metadata)
-    const subject = genres && genres.length
-      ? `${title} [${genres.join(", ")}]`
-      : title;
-
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
         user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_PASS,
+        pass: process.env.GMAIL_APP_PASSWORD,
       },
     });
 
+    // Post title → TV show or Movie name (no emoji)
+    const subject =
+      type === "tv"
+        ? `TV Show: ${title}`
+        : `Movie: ${title}`;
+
+    // Blogger labels from genres (added in subject metadata, hidden in post)
+    const labelPart = genres?.length ? ` [${genres.join(", ")}]` : "";
+
     await transporter.sendMail({
       from: `"TMDB Generator" <${process.env.GMAIL_USER}>`,
-      to,
-      subject,
+      to: process.env.GMAIL_USER,
+      subject: subject + labelPart,
       html: htmlContent,
     });
 
-    return res.status(200).json({ success: true, message: "Post sent successfully!" });
-  } catch (error) {
-    console.error("❌ Email send error:", error);
-    return res.status(500).json({ error: "Failed to send email", details: error.message });
+    res.status(200).json({ message: "Post sent successfully!" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to send email", error: err });
   }
 }
