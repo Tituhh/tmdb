@@ -105,7 +105,7 @@ function updatePreview(){
 </div>
 <div class="overview"><span class="label">Overview:</span><p>${overview}</p></div>
 <div class="screenshots"><h3>Screenshots</h3><div class="gallery">${screenshotsArr.map(s=>`<img src="${s}" alt="">`).join("")}</div></div>
-<div class="downloads">${downloadsArr.map(d=>{const [label,url]=d.split("|"); return `<a href="${url}" class="download-btn">${label}</a>`;}).join("")}</div>`;
+<div class="downloads">${downloadsArr.map(d=>{const [label,url]=d.split("|"); return `<a href="${url}" class="gdlink">${label}</a>`;}).join("")}</div>`;
 
   document.getElementById("preview-container").innerHTML=html;
 }
