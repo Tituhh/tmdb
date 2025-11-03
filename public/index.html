@@ -1,144 +1,170 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TMDB Post Generator</title>
-  <link rel="stylesheet" href="https://tituhh.github.io/css/cdn/gen.css">
-  <style>
-    body { background: #121212; color: #fff; font-family: 'Poppins', sans-serif; }
-    .container { max-width: 900px; margin: auto; padding: 20px; text-align: center; }
-    input, textarea { width: 100%; padding: 8px; margin: 6px 0; border-radius: 8px; border: none; background: #1e1e1e; color: #fff; }
-    button { background: cyan; border: none; padding: 10px 20px; border-radius: 6px; margin-top: 10px; cursor: pointer; font-weight: 600; }
-    #output { margin-top: 30px; text-align: left; background: #1a1a1a; padding: 20px; border-radius: 10px; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎬 Movie Post Generator</title>
+<link rel="stylesheet" href="https://tituhh.github.io/css/cdn/gen.css">
+<style>
+body {
+  background: #121212;
+  color: white;
+  font-family: 'Poppins', sans-serif;
+  text-align: center;
+  padding: 20px;
+}
+input, textarea {
+  width: 90%;
+  padding: 10px;
+  margin: 8px 0;
+  border-radius: 6px;
+  border: none;
+  outline: none;
+  font-size: 14px;
+}
+button {
+  background: cyan;
+  color: #000;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 5px;
+  font-weight: 600;
+  cursor: pointer;
+  margin: 10px;
+}
+button:hover { background: #00e0e0; }
+
+#downloads input {
+  width: 45%;
+  display: inline-block;
+}
+#downloads div {
+  margin-bottom: 10px;
+}
+.output-box {
+  background: #1a1a1a;
+  padding: 15px;
+  border-radius: 10px;
+  text-align: left;
+  margin-top: 20px;
+}
+</style>
 </head>
 <body>
 
-<div class="container">
-  <h2>🎬 TMDB Post Generator</h2>
+<h2>🎥 TMDB Movie Post Generator</h2>
+<input type="text" id="tmdbId" placeholder="Enter TMDB ID (e.g., 414906)">
+<button onclick="fetchData()">Fetch Movie</button>
 
-  <input id="tmdbid" placeholder="Enter TMDB ID (e.g. 414906)" />
-  <button onclick="fetchData()">Fetch Data</button>
+<div id="form-section" style="display:none;">
+  <input type="text" id="title" placeholder="Title">
+  <input type="text" id="tagline" placeholder="Tagline">
+  <input type="text" id="poster" placeholder="Poster URL">
+  <textarea id="overview" placeholder="Overview"></textarea>
+  <input type="text" id="genres" placeholder="Genres (comma separated)">
+  <input type="text" id="release" placeholder="Release Date">
+  <input type="text" id="runtime" placeholder="Runtime">
+  <input type="text" id="director" placeholder="Director">
+  <input type="text" id="writer" placeholder="Writer">
+  <input type="text" id="cast" placeholder="Top 5 Cast">
 
-  <input id="title-field" placeholder="Title" />
-  <input id="tagline-field" placeholder="Tagline" />
-  <input id="poster-field" placeholder="Poster URL" />
-  <input id="backdrop-field" placeholder="Backdrop URL" />
-  <input id="genres-field" placeholder="Genres (comma separated)" />
-  <input id="release-field" placeholder="Release Date" />
-  <input id="runtime-field" placeholder="Runtime (min)" />
-  <input id="director-field" placeholder="Director" />
-  <input id="writer-field" placeholder="Writer" />
-  <input id="cast-field" placeholder="Top Cast (comma separated)" />
-  <textarea id="overview-field" placeholder="Overview"></textarea>
-  <input id="screenshots-field" placeholder="Screenshots URLs (comma separated)" />
-  <input id="download-label-field" placeholder="Download Label" />
-  <input id="download-link-field" placeholder="Download Link" />
+  <h3>⬇ Download Buttons</h3>
+  <div id="downloads">
+    <div>
+      <input type="text" placeholder="Button Label" class="btn-label">
+      <input type="text" placeholder="Button URL" class="btn-url">
+    </div>
+  </div>
+  <button onclick="addDownload()">➕ Add More</button>
 
   <button onclick="generateHTML()">Generate HTML</button>
+</div>
 
-  <div id="output"></div>
-
-  <button onclick="sendToBlogger()">Send to Blogger</button>
+<div class="output-box">
+  <h3>Generated HTML</h3>
+  <textarea id="output" rows="20"></textarea>
+  <button onclick="sendEmail()">Send via Mail</button>
 </div>
 
 <script>
-const TMDB_API_KEY = "55b11132b5aef36e8376418dcce756f2";
-
 async function fetchData() {
-  const id = document.getElementById("tmdbid").value;
-  if (!id) return alert("Enter TMDB ID!");
-
-  const url = `https://api.themoviedb.org/3/movie/${id}?api_key=${TMDB_API_KEY}&append_to_response=credits,images,videos`;
-  const res = await fetch(url);
+  const id = document.getElementById("tmdbId").value.trim();
+  if (!id) return alert("Enter TMDB ID");
+  const apiKey = "55b11132b5aef36e8376418dcce756f2";
+  const res = await fetch(`https://api.themoviedb.org/3/movie/${id}?api_key=${apiKey}&append_to_response=credits,images`);
   const data = await res.json();
+  
+  document.getElementById("form-section").style.display = "block";
+  document.getElementById("title").value = data.title || "";
+  document.getElementById("tagline").value = data.tagline || "";
+  document.getElementById("poster").value = "https://image.tmdb.org/t/p/w500" + data.poster_path;
+  document.getElementById("overview").value = data.overview || "";
+  document.getElementById("genres").value = data.genres.map(g => g.name).join(", ");
+  document.getElementById("release").value = data.release_date || "";
+  document.getElementById("runtime").value = data.runtime ? data.runtime + " min" : "";
+  const crew = data.credits.crew;
+  document.getElementById("director").value = crew.find(c => c.job === "Director")?.name || "";
+  document.getElementById("writer").value = crew.filter(c => c.department === "Writing").map(c => c.name).slice(0,2).join(", ");
+  document.getElementById("cast").value = data.credits.cast.slice(0,5).map(c => c.name).join(", ");
+}
 
-  document.getElementById("title-field").value = data.title || "";
-  document.getElementById("tagline-field").value = data.tagline || "";
-  document.getElementById("poster-field").value = `https://image.tmdb.org/t/p/w500${data.poster_path}`;
-  document.getElementById("backdrop-field").value = `https://image.tmdb.org/t/p/original${data.backdrop_path}`;
-  document.getElementById("genres-field").value = data.genres.map(g => g.name).join(", ");
-  document.getElementById("release-field").value = data.release_date || "";
-  document.getElementById("runtime-field").value = data.runtime + " min" || "";
-  document.getElementById("overview-field").value = data.overview || "";
-
-  const cast = data.credits?.cast?.slice(0,5).map(a=>a.name).join(", ");
-  document.getElementById("cast-field").value = cast || "";
-
-  const crew = data.credits?.crew || [];
-  const director = crew.find(c => c.job === "Director")?.name;
-  const writer = crew.filter(c => c.job === "Writer").map(w => w.name).join(", ");
-  document.getElementById("director-field").value = director || "";
-  document.getElementById("writer-field").value = writer || "";
-
-  const screenshots = data.images?.backdrops?.slice(0,5).map(i => `https://image.tmdb.org/t/p/w500${i.file_path}`);
-  document.getElementById("screenshots-field").value = screenshots.join(", ");
+function addDownload() {
+  const div = document.createElement("div");
+  div.innerHTML = `
+    <input type="text" placeholder="Button Label" class="btn-label">
+    <input type="text" placeholder="Button URL" class="btn-url">
+  `;
+  document.getElementById("downloads").appendChild(div);
 }
 
 function generateHTML() {
-  const title = document.getElementById("title-field").value;
-  const tagline = document.getElementById("tagline-field").value;
-  const poster = document.getElementById("poster-field").value;
-  const genres = document.getElementById("genres-field").value.split(",").map(g => g.trim());
-  const release = document.getElementById("release-field").value;
-  const runtime = document.getElementById("runtime-field").value;
-  const director = document.getElementById("director-field").value;
-  const writer = document.getElementById("writer-field").value;
-  const cast = document.getElementById("cast-field").value;
-  const overview = document.getElementById("overview-field").value;
-  const screenshots = document.getElementById("screenshots-field").value.split(",").map(s=>s.trim());
-  const dlLabel = document.getElementById("download-label-field").value;
-  const dlLink = document.getElementById("download-link-field").value;
+  const title = document.getElementById("title").value;
+  const tagline = document.getElementById("tagline").value;
+  const poster = document.getElementById("poster").value;
+  const overview = document.getElementById("overview").value;
+  const genres = document.getElementById("genres").value.split(",").map(g => g.trim());
+  const release = document.getElementById("release").value;
+  const runtime = document.getElementById("runtime").value;
+  const director = document.getElementById("director").value;
+  const writer = document.getElementById("writer").value;
+  const cast = document.getElementById("cast").value;
+  const downloads = Array.from(document.querySelectorAll("#downloads div")).map(div => ({
+    label: div.querySelector(".btn-label").value,
+    url: div.querySelector(".btn-url").value
+  }));
 
   const html = `
-  <link rel="stylesheet" href="https://tituhh.github.io/css/cdn/gen.css">
-  <div class="container">
-    <div class="poster"><img src="${poster}" alt="${title} Poster"></div>
-    <h1 class="title">${title}</h1>
-    <p class="tagline">${tagline}</p>
-
-    <div class="info-grid">
-      <div><span class="label">Release Date:</span> <span class="value">${release}</span></div>
-      <div><span class="label">Runtime:</span> <span class="value">${runtime}</span></div>
-      <div><span class="label">Director:</span> <span class="value">${director}</span></div>
-      <div><span class="label">Writer:</span> <span class="value">${writer}</span></div>
-      <div><span class="label">Top Cast:</span> <span class="value">${cast}</span></div>
-    </div>
-
-    <div class="overview"><span class="label">Overview:</span><p>${overview}</p></div>
-
-    <div class="screenshots"><h3>Screenshots</h3>
-      <div class="gallery">
-        ${screenshots.map(s => `<img src="${s}" alt="Screenshot">`).join("")}
-      </div>
-    </div>
-
-    <a href="${dlLink}" class="download-btn">${dlLabel}</a>
-  </div>`;
-
-  document.getElementById("output").innerText = html;
-  return html;
+<link rel="stylesheet" href="https://tituhh.github.io/css/cdn/gen.css">
+<div class="container">
+  <div class="poster"><img src="${poster}" alt="Poster"></div>
+  <h1 class="title">${title}</h1>
+  <p class="tagline">${tagline}</p>
+  <div class="genres">
+    ${genres.map(g => `<a href="/search/label/${g}">${g}</a>`).join(" ")}
+  </div>
+  <div class="info-grid">
+    <div><span class="label">Release Date:</span> <span class="value">${release}</span></div>
+    <div><span class="label">Runtime:</span> <span class="value">${runtime}</span></div>
+    <div><span class="label">Director:</span> <span class="value">${director}</span></div>
+    <div><span class="label">Writer:</span> <span class="value">${writer}</span></div>
+    <div><span class="label">Top Cast:</span> <span class="value">${cast}</span></div>
+  </div>
+  <div class="overview"><span class="label">Overview:</span><p>${overview}</p></div>
+  ${downloads.map(d => `<a href="${d.url}" class="download-btn">⬇ ${d.label}</a>`).join("<br>")}
+</div>`;
+  
+  document.getElementById("output").value = html;
 }
 
-async function sendToBlogger() {
-  const htmlContent = generateHTML();
-  const title = document.getElementById("title-field").value;
-  const genres = document.getElementById("genres-field").value.split(",").map(g=>g.trim());
-
-  const res = await fetch("/api/sendPost", {
+async function sendEmail() {
+  const htmlContent = document.getElementById("output").value;
+  const response = await fetch("/api/sendPost", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      to: "asatkarsarvesh39.titu@blogger.com",
-      title,
-      genres,
-      htmlContent
-    })
+    body: JSON.stringify({ html: htmlContent })
   });
-
-  const data = await res.json();
-  alert(data.success ? "✅ Sent to Blogger!" : "❌ Error: " + data.error);
+  const result = await response.json();
+  alert(result.message);
 }
 </script>
 
