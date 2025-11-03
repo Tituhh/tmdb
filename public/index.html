@@ -13,17 +13,21 @@ input,textarea,select{width:100%;margin:5px 0;padding:8px;border-radius:8px;bord
 button{padding:10px 20px;margin-top:10px;border:none;border-radius:30px;font-weight:600;background:linear-gradient(45deg,#ff4b2b,#ff416c);color:#fff;cursor:pointer;}
 button:hover{opacity:0.9;}
 textarea#output{height:200px;background:#111;color:#fff;padding:15px;border-radius:10px;margin-top:20px;}
+.preview{margin-top:20px;padding:20px;background:#1a1a1a;border-radius:12px;}
 </style>
 </head>
 <body>
 <div class="container">
-  <h2>TMDB Post Generator</h2>
+  <h2>🎬 TMDB Post Generator</h2>
 
   <label>TMDB ID:</label>
   <input type="text" id="tmdbid" placeholder="Enter TMDB ID">
 
   <label>Type:</label>
-  <select id="type"><option value="movie">Movie</option><option value="tv">Series</option></select>
+  <select id="type">
+    <option value="movie">Movie</option>
+    <option value="tv">Series</option>
+  </select>
 
   <button onclick="fetchTMDB()">Fetch Data</button>
 
@@ -43,100 +47,112 @@ textarea#output{height:200px;background:#111;color:#fff;padding:15px;border-radi
   <input type="text" id="downloads-field" placeholder="1080p|https://example.com, 720p|https://example.com">
 
   <button onclick="updatePreview()">Update Preview</button>
-  <button onclick="sendPost()">Send Post via Gmail</button>
+  <button onclick="generateHTML()">Generate HTML</button>
+  <button onclick="copyHTML()">Copy HTML</button>
+  <button onclick="sendPost()">Send Post to Blogger</button>
 
   <h3>Preview</h3>
   <div class="preview" id="preview-container"></div>
 
   <textarea id="output" placeholder="Generated HTML will appear here"></textarea>
-  <button onclick="generateHTML()">Generate HTML</button>
-  <button onclick="copyHTML()">Copy HTML</button>
 </div>
 
 <script>
-const API_KEY="55b11132b5aef36e8376418dcce756f2";
+const API_KEY = "55b11132b5aef36e8376418dcce756f2"; // Replace with your TMDB API key
 
 async function fetchTMDB(){
-  const id=document.getElementById("tmdbid").value;
-  const type=document.getElementById("type").value;
-  const res=await fetch(`https://api.themoviedb.org/3/${type}/${id}?api_key=${API_KEY}&append_to_response=credits,images`);
-  const data=await res.json();
+  const id = document.getElementById("tmdbid").value;
+  const type = document.getElementById("type").value;
 
-  document.getElementById("title-field").value=data.title||data.name||"";
-  document.getElementById("tagline-field").value=data.tagline||"";
-  document.getElementById("poster-field").value=data.poster_path?`https://image.tmdb.org/t/p/w500${data.poster_path}`:"";
-  document.getElementById("genres-field").value=data.genres?.map(g=>g.name).join(", ")||"";
-  document.getElementById("release-field").value=data.release_date||data.first_air_date||"";
-  document.getElementById("runtime-field").value=data.runtime||data.episode_run_time?.[0]||"";
-  document.getElementById("director-field").value=data.credits.crew.filter(c=>c.job==="Director").map(c=>c.name).join(", ");
-  document.getElementById("writer-field").value=data.credits.crew.filter(c=>c.job==="Writer"||c.job==="Screenplay").map(c=>c.name).join(", ");
-  document.getElementById("cast-field").value=data.credits.cast.slice(0,5).map(c=>c.name).join(", ");
-  document.getElementById("overview-field").value=data.overview||"";
-  document.getElementById("screenshots-field").value=data.images.backdrops.slice(0,5).map(i=>`https://image.tmdb.org/t/p/w500${i.file_path}`).join(", ");
-  document.getElementById("downloads-field").value="1080p|#, 720p|#";
+  const res = await fetch(`https://api.themoviedb.org/3/${type}/${id}?api_key=${API_KEY}&append_to_response=credits,images`);
+  const data = await res.json();
+
+  document.getElementById("title-field").value = data.title || data.name || "";
+  document.getElementById("tagline-field").value = data.tagline || "";
+  document.getElementById("poster-field").value = data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : "";
+  document.getElementById("genres-field").value = data.genres?.map(g => g.name).join(", ") || "";
+  document.getElementById("release-field").value = data.release_date || data.first_air_date || "";
+  document.getElementById("runtime-field").value = data.runtime || data.episode_run_time?.[0] || "";
+  document.getElementById("director-field").value = data.credits.crew.filter(c => c.job === "Director").map(c => c.name).join(", ");
+  document.getElementById("writer-field").value = data.credits.crew.filter(c => c.job === "Writer" || c.job === "Screenplay").map(c => c.name).join(", ");
+  document.getElementById("cast-field").value = data.credits.cast.slice(0, 5).map(c => c.name).join(", ");
+  document.getElementById("overview-field").value = data.overview || "";
+  document.getElementById("screenshots-field").value = data.images.backdrops.slice(0, 5).map(i => `https://image.tmdb.org/t/p/w500${i.file_path}`).join(", ");
+  document.getElementById("downloads-field").value = "1080p|#, 720p|#";
 
   updatePreview();
 }
 
 function updatePreview(){
-  const title=document.getElementById("title-field").value;
-  const tagline=document.getElementById("tagline-field").value;
-  const poster=document.getElementById("poster-field").value;
-  const genresArr=document.getElementById("genres-field").value.split(",").map(g=>g.trim());
-  const release=document.getElementById("release-field").value;
-  const runtime=document.getElementById("runtime-field").value;
-  const director=document.getElementById("director-field").value;
-  const writer=document.getElementById("writer-field").value;
-  const cast=document.getElementById("cast-field").value;
-  const overview=document.getElementById("overview-field").value;
-  const screenshotsArr=document.getElementById("screenshots-field").value.split(",").map(s=>s.trim());
-  const downloadsArr=document.getElementById("downloads-field").value.split(",").map(d=>d.trim());
+  const title = document.getElementById("title-field").value;
+  const tagline = document.getElementById("tagline-field").value;
+  const poster = document.getElementById("poster-field").value;
+  const release = document.getElementById("release-field").value;
+  const runtime = document.getElementById("runtime-field").value;
+  const director = document.getElementById("director-field").value;
+  const writer = document.getElementById("writer-field").value;
+  const cast = document.getElementById("cast-field").value;
+  const overview = document.getElementById("overview-field").value;
+  const screenshotsArr = document.getElementById("screenshots-field").value.split(",").map(s => s.trim());
+  const downloadsArr = document.getElementById("downloads-field").value.split(",").map(d => d.trim());
 
-  let html=`<div class="poster"><img src="${poster}" alt=""></div>
-<h1 class="title">${title}</h1>
-<p class="tagline">${tagline}</p>
-<div class="genres">${genresArr.map(g=>`<a href="/search/label/${g}">${g}</a>`).join(" ")}</div>
-<div class="info-grid">
-<div><span class="label">Release Date:</span> <span class="value">${release}</span></div>
-<div><span class="label">Runtime:</span> <span class="value">${runtime}</span></div>
-<div><span class="label">Director:</span> <span class="value">${director}</span></div>
-<div><span class="label">Writer:</span> <span class="value">${writer}</span></div>
-<div><span class="label">Top Cast:</span> <span class="value">${cast}</span></div>
-</div>
-<div class="overview"><span class="label">Overview:</span><p>${overview}</p></div>
-<div class="screenshots"><h3>Screenshots</h3><div class="gallery">${screenshotsArr.map(s=>`<img src="${s}" alt="">`).join("")}</div></div>
-<div class="downloads">${downloadsArr.map(d=>{const [label,url]=d.split("|"); return `<a href="${url}" class="gdlink">${label}</a>`;}).join("")}</div>`;
+  let html = `
+  <div class="poster"><img src="${poster}" alt=""></div>
+  <h1 class="title">${title}</h1>
+  <p class="tagline">${tagline}</p>
+  <div class="info-grid">
+    <div><span class="label">Release Date:</span> <span class="value">${release}</span></div>
+    <div><span class="label">Runtime:</span> <span class="value">${runtime}</span></div>
+    <div><span class="label">Director:</span> <span class="value">${director}</span></div>
+    <div><span class="label">Writer:</span> <span class="value">${writer}</span></div>
+    <div><span class="label">Top Cast:</span> <span class="value">${cast}</span></div>
+  </div>
+  <div class="overview"><span class="label">Overview:</span><p>${overview}</p></div>
+  <div class="screenshots"><h3>Screenshots</h3><div class="gallery">
+    ${screenshotsArr.map(s => `<img src="${s}" alt="">`).join("")}
+  </div></div>
+  <div class="downloads">
+    ${downloadsArr.map(d => {
+      const [label,url] = d.split("|");
+      return `<a href="${url}" class="gdlink">${label}</a>`;
+    }).join("")}
+  </div>`;
 
-  document.getElementById("preview-container").innerHTML=html;
+  document.getElementById("preview-container").innerHTML = html;
 }
 
 function generateHTML(){
-  const content=document.getElementById("preview-container").innerHTML;
-  const finalHTML=`<link rel="stylesheet" href="https://tituhh.github.io/css/cdn/gen.css">\n<div class="container">\n${content}\n</div>`;
-  document.getElementById("output").value=finalHTML;
+  const content = document.getElementById("preview-container").innerHTML;
+  const finalHTML = `<link rel="stylesheet" href="https://tituhh.github.io/css/cdn/gen.css">\n<div class="container">\n${content}\n</div>`;
+  document.getElementById("output").value = finalHTML;
 }
 
 function copyHTML(){
-  const output=document.getElementById("output");
+  const output = document.getElementById("output");
   output.select();
   document.execCommand("copy");
-  alert("HTML copied!");
+  alert("✅ HTML Copied!");
 }
 
 async function sendPost(){
-  const htmlContent=document.getElementById("output").value;
-  const res=await fetch("https://tmdb-5hjd.vercel.app/api/sendPost",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      to:"asatkarsarvesh39.titu@blogger.com",
-      subject:document.getElementById("title-field").value,
+  const htmlContent = document.getElementById("output").value;
+  const title = document.getElementById("title-field").value;
+  const genres = document.getElementById("genres-field").value;
+  const subject = `${title} [${genres}]`; // Blogger auto-uses these as Labels
+
+  const res = await fetch("https://tmdb-5hjd.vercel.app/api/sendPost", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      to: "asatkarsarvesh39.titu@blogger.com",
+      subject,
       htmlContent
     })
   });
-  const result=await res.json();
-  if(res.ok) alert(result.message);
-  else alert(result.error);
+
+  const result = await res.json();
+  if(res.ok) alert("✅ Post sent to Blogger successfully!");
+  else alert("❌ Failed: " + result.error);
 }
 </script>
 </body>
