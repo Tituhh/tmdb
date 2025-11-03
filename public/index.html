@@ -54,7 +54,7 @@ textarea#output{height:200px;background:#111;color:#fff;padding:15px;border-radi
 </div>
 
 <script>
-const API_KEY="YOUR_TMDB_API_KEY";
+const API_KEY="55b11132b5aef36e8376418dcce756f2";
 
 async function fetchTMDB(){
   const id=document.getElementById("tmdbid").value;
@@ -125,7 +125,7 @@ function copyHTML(){
 
 async function sendPost(){
   const htmlContent=document.getElementById("output").value;
-  const res=await fetch("https://<your-vercel-app>.vercel.app/api/sendPost",{
+  const res=await fetch("https://tmdb-5hjd.vercel.app/api/sendPost",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify({
