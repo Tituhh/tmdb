@@ -5,35 +5,36 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Only POST requests allowed" });
   }
 
-  const { to, subject, htmlContent } = req.body;
+  const { to, title, genres, htmlContent } = req.body;
 
-  if (!to || !subject || !htmlContent) {
+  if (!to || !title || !htmlContent) {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
   try {
-    // --- Gmail SMTP configuration ---
+    // Create Blogger-compatible subject line (genres only for metadata)
+    const subject = genres && genres.length
+      ? `${title} [${genres.join(", ")}]`
+      : title;
+
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
-        user: process.env.GMAIL_USER,   // your Gmail address (e.g. sender@gmail.com)
-        pass: process.env.GMAIL_PASS,   // Gmail App password (not real password)
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_PASS,
       },
     });
 
-    // --- Send mail to Blogger ---
     await transporter.sendMail({
-      from: `"TMDB Post Generator" <${process.env.GMAIL_USER}>`,
-      to,                      // "asatkarsarvesh39.titu@blogger.com"
-      subject,                 // Title + [Genres]  → becomes Blogger title & labels
-      html: htmlContent,       // Full generated HTML post body
+      from: `"TMDB Generator" <${process.env.GMAIL_USER}>`,
+      to,
+      subject,
+      html: htmlContent,
     });
 
-    console.log("✅ Post sent successfully to Blogger");
     return res.status(200).json({ success: true, message: "Post sent successfully!" });
-
   } catch (error) {
-    console.error("❌ Error sending mail:", error);
+    console.error("❌ Email send error:", error);
     return res.status(500).json({ error: "Failed to send email", details: error.message });
   }
 }
