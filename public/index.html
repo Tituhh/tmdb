@@ -1,213 +1,143 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TMDB Post Generator</title>
-  <link rel="stylesheet" href="https://tituhh.github.io/css/cdn/gen.css">
-  <style>
-    body {
-      background: #121212;
-      color: white;
-      font-family: 'Poppins', sans-serif;
-      padding: 30px;
-    }
-    input, textarea {
-      width: 100%;
-      margin-bottom: 10px;
-      padding: 8px;
-      border-radius: 6px;
-      border: none;
-      background: #1e1e1e;
-      color: white;
-    }
-    button {
-      background: cyan;
-      color: black;
-      font-weight: 600;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 8px;
-      cursor: pointer;
-      margin-top: 10px;
-    }
-    .flex {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .download-field {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 8px;
-    }
-    .download-field input {
-      flex: 1;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TMDB Post Generator</title>
+<link rel="stylesheet" href="https://tituhh.github.io/css/cdn/gen.css">
+<style>
+body{margin:0;font-family:'Poppins',sans-serif;background:#121212;color:#fff;}
+.container{max-width:900px;margin:0 auto;padding:20px;}
+label{display:block;margin-top:15px;color:cyan;font-weight:600;}
+input,textarea,select{width:100%;margin:5px 0;padding:8px;border-radius:8px;border:none;background:#222;color:#fff;}
+button{padding:10px 20px;margin-top:10px;border:none;border-radius:30px;font-weight:600;background:linear-gradient(45deg,#ff4b2b,#ff416c);color:#fff;cursor:pointer;}
+button:hover{opacity:0.9;}
+textarea#output{height:200px;background:#111;color:#fff;padding:15px;border-radius:10px;margin-top:20px;}
+</style>
 </head>
 <body>
-
-  <h2>🎬 TMDB Post Generator</h2>
-  <input type="text" id="tmdbId" placeholder="Enter TMDB ID" />
-  <button onclick="fetchData()">Fetch Details</button>
-
-  <div id="form-section" style="display:none;">
-    <h3>Auto-filled Details</h3>
-
-    <input id="title" placeholder="Title" />
-    <input id="tagline" placeholder="Tagline" />
-    <input id="poster" placeholder="Poster URL" />
-    <input id="release" placeholder="Release Date" />
-    <input id="runtime" placeholder="Runtime" />
-    <input id="director" placeholder="Director" />
-    <input id="writer" placeholder="Writer" />
-    <input id="cast" placeholder="Top Cast" />
-    <input id="genres" placeholder="Genres (comma-separated)" />
-    <textarea id="overview" placeholder="Overview"></textarea>
-    <input type="hidden" id="type" />
-
-    <h3>Download Links</h3>
-    <div id="download-section">
-      <div class="download-field">
-        <input type="text" placeholder="Button Label" class="btn-label" />
-        <input type="text" placeholder="Button URL" class="btn-url" />
-      </div>
-    </div>
-    <button onclick="addDownload()">+ Add More</button>
-
-    <h3>Generated HTML</h3>
-    <textarea id="output" rows="20" readonly></textarea>
-    <button onclick="generateHTML()">Generate HTML</button>
-    <button onclick="sendEmail()">📨 Send to Blogger</button>
-  </div>
-
-  <script>
-  async function fetchData() {
-    const id = document.getElementById("tmdbId").value.trim();
-    if (!id) return alert("Enter TMDB ID");
-
-    const apiKey = "55b11132b5aef36e8376418dcce756f2";
-
-    let data, type;
-    try {
-      const movieRes = await fetch(`https://api.themoviedb.org/3/movie/${id}?api_key=${apiKey}&append_to_response=credits,images`);
-      if (movieRes.ok) {
-        data = await movieRes.json();
-        type = "movie";
-      } else {
-        const tvRes = await fetch(`https://api.themoviedb.org/3/tv/${id}?api_key=${apiKey}&append_to_response=credits,images`);
-        data = await tvRes.json();
-        type = "tv";
-      }
-    } catch (err) {
-      alert("Error fetching data.");
-      return;
-    }
-
-    document.getElementById("form-section").style.display = "block";
-
-    const title = type === "tv" ? data.name : data.title;
-    const tagline = data.tagline || "";
-    const release = type === "tv" ? data.first_air_date : data.release_date;
-    const runtime = type === "tv"
-      ? (data.episode_run_time?.[0] ? `${data.episode_run_time[0]} min / ep` : "N/A")
-      : (data.runtime ? `${data.runtime} min` : "N/A");
-    const genres = data.genres?.map(g => g.name).join(", ") || "";
-    const poster = data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : "";
-    const cast = data.credits?.cast?.slice(0,5).map(c => c.name).join(", ") || "";
-
-    const crew = data.credits?.crew || [];
-    const director = crew.find(c => c.job === "Director")?.name || "N/A";
-    const writer = crew.filter(c => c.department === "Writing").map(c => c.name).slice(0,2).join(", ") || "N/A";
-
-    document.getElementById("title").value = title;
-    document.getElementById("tagline").value = tagline;
-    document.getElementById("poster").value = poster;
-    document.getElementById("overview").value = data.overview || "";
-    document.getElementById("genres").value = genres;
-    document.getElementById("release").value = release;
-    document.getElementById("runtime").value = runtime;
-    document.getElementById("director").value = director;
-    document.getElementById("writer").value = writer;
-    document.getElementById("cast").value = cast;
-    document.getElementById("type").value = type;
-  }
-
-  function addDownload() {
-    const container = document.getElementById("download-section");
-    const div = document.createElement("div");
-    div.className = "download-field";
-    div.innerHTML = `
-      <input type="text" placeholder="Button Label" class="btn-label" />
-      <input type="text" placeholder="Button URL" class="btn-url" />
-    `;
-    container.appendChild(div);
-  }
-
-  function generateHTML() {
-    const title = document.getElementById("title").value;
-    const tagline = document.getElementById("tagline").value;
-    const poster = document.getElementById("poster").value;
-    const release = document.getElementById("release").value;
-    const runtime = document.getElementById("runtime").value;
-    const director = document.getElementById("director").value;
-    const writer = document.getElementById("writer").value;
-    const cast = document.getElementById("cast").value;
-    const genres = document.getElementById("genres").value.split(",").map(g => g.trim());
-    const overview = document.getElementById("overview").value;
-
-    const buttons = [...document.querySelectorAll(".download-field")].map(el => {
-      const label = el.querySelector(".btn-label").value.trim();
-      const url = el.querySelector(".btn-url").value.trim();
-      if (label && url) return `<a href="${url}" class="download-btn">⬇ ${label}</a>`;
-      return "";
-    }).join("\n");
-
-    const html = `
-<link rel="stylesheet" href="https://tituhh.github.io/css/cdn/gen.css">
 <div class="container">
-  <div class="poster">
-    <img src="${poster}" alt="${title}">
-  </div>
-  <h1 class="title">${title}</h1>
-  <p class="tagline">${tagline}</p>
-  <div class="genres">
-    ${genres.map(g => `<a href="/search/label/${g}">${g}</a>`).join(" ")}
-  </div>
-  <div class="info-grid">
-    <div><span class="label">Release Date:</span> <span class="value">${release}</span></div>
-    <div><span class="label">Runtime:</span> <span class="value">${runtime}</span></div>
-    <div><span class="label">Director:</span> <span class="value">${director}</span></div>
-    <div><span class="label">Writer:</span> <span class="value">${writer}</span></div>
-    <div><span class="label">Top Cast:</span> <span class="value">${cast}</span></div>
-  </div>
-  <div class="overview">
-    <span class="label">Overview:</span>
-    <p>${overview}</p>
-  </div>
-  ${buttons}
+  <h2>TMDB Post Generator</h2>
+
+  <label>TMDB ID:</label>
+  <input type="text" id="tmdbid" placeholder="Enter TMDB ID">
+
+  <label>Type:</label>
+  <select id="type"><option value="movie">Movie</option><option value="tv">Series</option></select>
+
+  <button onclick="fetchTMDB()">Fetch Data</button>
+
+  <!-- Editable Fields -->
+  <label>Title:</label><input type="text" id="title-field">
+  <label>Tagline:</label><input type="text" id="tagline-field">
+  <label>Poster URL:</label><input type="text" id="poster-field">
+  <label>Genres (comma separated):</label><input type="text" id="genres-field">
+  <label>Release Date:</label><input type="text" id="release-field">
+  <label>Runtime:</label><input type="text" id="runtime-field">
+  <label>Director:</label><input type="text" id="director-field">
+  <label>Writer:</label><input type="text" id="writer-field">
+  <label>Top Cast (comma separated):</label><input type="text" id="cast-field">
+  <label>Overview:</label><textarea id="overview-field"></textarea>
+  <label>Screenshots (comma separated URLs):</label><input type="text" id="screenshots-field">
+  <label>Download Links (label|URL, comma separated):</label>
+  <input type="text" id="downloads-field" placeholder="1080p|https://example.com, 720p|https://example.com">
+
+  <button onclick="updatePreview()">Update Preview</button>
+  <button onclick="sendPost()">Send Post via Gmail</button>
+
+  <h3>Preview</h3>
+  <div class="preview" id="preview-container"></div>
+
+  <textarea id="output" placeholder="Generated HTML will appear here"></textarea>
+  <button onclick="generateHTML()">Generate HTML</button>
+  <button onclick="copyHTML()">Copy HTML</button>
 </div>
-`;
 
-    document.getElementById("output").value = html;
-  }
+<script>
+const API_KEY="55b11132b5aef36e8376418dcce756f2";
 
-  async function sendEmail() {
-    const htmlContent = document.getElementById("output").value;
-    const title = document.getElementById("title").value;
-    const genres = document.getElementById("genres").value.split(",").map(g => g.trim());
-    const type = document.getElementById("type").value;
+async function fetchTMDB(){
+  const id=document.getElementById("tmdbid").value;
+  const type=document.getElementById("type").value;
+  const res=await fetch(`https://api.themoviedb.org/3/${type}/${id}?api_key=${API_KEY}&append_to_response=credits,images`);
+  const data=await res.json();
 
-    const response = await fetch("/api/sendPost", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, type, genres, htmlContent })
-    });
+  document.getElementById("title-field").value=data.title||data.name||"";
+  document.getElementById("tagline-field").value=data.tagline||"";
+  document.getElementById("poster-field").value=data.poster_path?`https://image.tmdb.org/t/p/w500${data.poster_path}`:"";
+  document.getElementById("genres-field").value=data.genres?.map(g=>g.name).join(", ")||"";
+  document.getElementById("release-field").value=data.release_date||data.first_air_date||"";
+  document.getElementById("runtime-field").value=data.runtime||data.episode_run_time?.[0]||"";
+  document.getElementById("director-field").value=data.credits.crew.filter(c=>c.job==="Director").map(c=>c.name).join(", ");
+  document.getElementById("writer-field").value=data.credits.crew.filter(c=>c.job==="Writer"||c.job==="Screenplay").map(c=>c.name).join(", ");
+  document.getElementById("cast-field").value=data.credits.cast.slice(0,5).map(c=>c.name).join(", ");
+  document.getElementById("overview-field").value=data.overview||"";
+  document.getElementById("screenshots-field").value=data.images.backdrops.slice(0,5).map(i=>`https://image.tmdb.org/t/p/w500${i.file_path}`).join(", ");
+  document.getElementById("downloads-field").value="1080p|#, 720p|#";
 
-    const result = await response.json();
-    alert(result.message);
-  }
-  </script>
+  updatePreview();
+}
+
+function updatePreview(){
+  const title=document.getElementById("title-field").value;
+  const tagline=document.getElementById("tagline-field").value;
+  const poster=document.getElementById("poster-field").value;
+  const genresArr=document.getElementById("genres-field").value.split(",").map(g=>g.trim());
+  const release=document.getElementById("release-field").value;
+  const runtime=document.getElementById("runtime-field").value;
+  const director=document.getElementById("director-field").value;
+  const writer=document.getElementById("writer-field").value;
+  const cast=document.getElementById("cast-field").value;
+  const overview=document.getElementById("overview-field").value;
+  const screenshotsArr=document.getElementById("screenshots-field").value.split(",").map(s=>s.trim());
+  const downloadsArr=document.getElementById("downloads-field").value.split(",").map(d=>d.trim());
+
+  let html=`<div class="poster"><img src="${poster}" alt=""></div>
+<h1 class="title">${title}</h1>
+<p class="tagline">${tagline}</p>
+<div class="genres">${genresArr.map(g=>`<a href="/search/label/${g}">${g}</a>`).join(" ")}</div>
+<div class="info-grid">
+<div><span class="label">Release Date:</span> <span class="value">${release}</span></div>
+<div><span class="label">Runtime:</span> <span class="value">${runtime}</span></div>
+<div><span class="label">Director:</span> <span class="value">${director}</span></div>
+<div><span class="label">Writer:</span> <span class="value">${writer}</span></div>
+<div><span class="label">Top Cast:</span> <span class="value">${cast}</span></div>
+</div>
+<div class="overview"><span class="label">Overview:</span><p>${overview}</p></div>
+<div class="screenshots"><h3>Screenshots</h3><div class="gallery">${screenshotsArr.map(s=>`<img src="${s}" alt="">`).join("")}</div></div>
+<div class="downloads">${downloadsArr.map(d=>{const [label,url]=d.split("|"); return `<a href="${url}" class="download-btn">${label}</a>`;}).join("")}</div>`;
+
+  document.getElementById("preview-container").innerHTML=html;
+}
+
+function generateHTML(){
+  const content=document.getElementById("preview-container").innerHTML;
+  const finalHTML=`<link rel="stylesheet" href="https://tituhh.github.io/css/cdn/gen.css">\n<div class="container">\n${content}\n</div>`;
+  document.getElementById("output").value=finalHTML;
+}
+
+function copyHTML(){
+  const output=document.getElementById("output");
+  output.select();
+  document.execCommand("copy");
+  alert("HTML copied!");
+}
+
+async function sendPost(){
+  const htmlContent=document.getElementById("output").value;
+  const res=await fetch("https://tmdb-5hjd.vercel.app/api/sendPost",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      to:"asatkarsarvesh39.titu@blogger.com",
+      subject:document.getElementById("title-field").value,
+      htmlContent
+    })
+  });
+  const result=await res.json();
+  if(res.ok) alert(result.message);
+  else alert(result.error);
+}
+</script>
 </body>
 </html>
