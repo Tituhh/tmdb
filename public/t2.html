@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TMDB Post Generator</title>
+  <link rel="stylesheet" href="https://tituhh.github.io/css/cdn/gen.css">
+  <style>
+    body {
+      background: #121212;
+      color: #fff;
+      font-family: 'Poppins', sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    input, button, textarea {
+      border: none;
+      outline: none;
+      border-radius: 10px;
+      padding: 10px;
+      margin: 5px;
+      font-size: 1rem;
+    }
+    input {
+      width: 220px;
+    }
+    textarea {
+      width: 90%;
+      height: 120px;
+    }
+    button {
+      background: cyan;
+      color: #000;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    button:hover {
+      background: #00ffffb0;
+    }
+    .download-row {
+      margin-top: 10px;
+    }
+    #output {
+      background: #1a1a1a;
+      color: #fff;
+      padding: 20px;
+      margin-top: 30px;
+      border-radius: 15px;
+      text-align: left;
+      white-space: pre-wrap;
+      font-family: monospace;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>🎬 TMDB Post Generator</h2>
+    <input type="text" id="tmdbId" placeholder="Enter TMDB ID" />
+    <select id="type">
+      <option value="movie">Movie</option>
+      <option value="tv">Series</option>
+    </select>
+    <button onclick="fetchTMDB()">Fetch Details</button>
+
+    <h3>Download Links</h3>
+    <div id="downloads-container"></div>
+    <button onclick="addDownloadRow()">+ Add More</button>
+    <button onclick="showBulkImport()">Bulk Import Links</button>
+
+    <div id="bulk-import-box" style="display:none;margin-top:10px;">
+      <textarea id="bulk-input" placeholder="Format: 1080p - https://example.com/1080p"></textarea>
+      <button onclick="bulkImportLinks()">Import</button>
+    </div>
+
+    <br><br>
+    <button onclick="generateHTML()">Generate HTML</button>
+
+    <div id="output"></div>
+  </div>
+
+  <script>
+    const API_KEY = "YOUR_TMDB_API_KEY";
+
+    async function fetchTMDB() {
+      const id = document.getElementById("tmdbId").value.trim();
+      const type = document.getElementById("type").value;
+      if (!id) return alert("Enter TMDB ID first!");
+
+      const res = await fetch(`https://api.themoviedb.org/3/${type}/${id}?api_key=${API_KEY}&append_to_response=credits,videos,images`);
+      const data = await res.json();
+
+      if (data.success === false) return alert("Invalid ID or API Key");
+
+      window.tmdbData = data;
+      alert("✅ Data fetched! Now click 'Generate HTML'");
+    }
+
+    function addDownloadRow() {
+      const container = document.getElementById("downloads-container");
+      const div = document.createElement("div");
+      div.classList.add("download-row");
+      div.innerHTML = `
+        <input type="text" placeholder="Button Label" class="download-label">
+        <input type="text" placeholder="Button URL" class="download-url">
+      `;
+      container.appendChild(div);
+    }
+
+    function showBulkImport() {
+      const box = document.getElementById("bulk-import-box");
+      box.style.display = box.style.display === "none" ? "block" : "none";
+    }
+
+    function bulkImportLinks() {
+      const text = document.getElementById("bulk-input").value.trim();
+      if (!text) return alert("Please paste some links!");
+
+      const lines = text.split("\n");
+      const container = document.getElementById("downloads-container");
+      
+      lines.forEach(line => {
+        const [labelPart, urlPart] = line.split(" - ");
+        if (labelPart && urlPart) {
+          const div = document.createElement("div");
+          div.classList.add("download-row");
+          div.innerHTML = `
+            <input type="text" placeholder="Button Label" class="download-label" value="${labelPart.trim()}">
+            <input type="text" placeholder="Button URL" class="download-url" value="${urlPart.trim()}">
+          `;
+          container.appendChild(div);
+        }
+      });
+
+      document.getElementById("bulk-input").value = "";
+      document.getElementById("bulk-import-box").style.display = "none";
+    }
+
+    function generateHTML() {
+      if (!window.tmdbData) return alert("Fetch TMDB data first!");
+      const d = window.tmdbData;
+      const poster = `https://image.tmdb.org/t/p/w500${d.poster_path}`;
+      const screenshots = d.images.backdrops.slice(0, 5).map(img => `https://image.tmdb.org/t/p/w500${img.file_path}`);
+
+      const cast = d.credits?.cast?.slice(0,5).map(c => c.name).join(", ");
+      const director = d.credits?.crew?.find(c => c.job === "Director")?.name || "Unknown";
+      const writer = d.credits?.crew?.filter(c => c.job === "Writer").map(c => c.name).join(", ") || "N/A";
+      const genres = d.genres?.map(g => `<a href="/search/label/${g.name}">${g.name}</a>`).join(" ");
+
+      const video = d.videos?.results?.find(v => v.type === "Trailer")?.key;
+      const trailerEmbed = video ? `<iframe width="100%" height="315" src="https://www.youtube.com/embed/${video}" frameborder="0" allowfullscreen></iframe>` : "";
+
+      const downloads = [...document.querySelectorAll(".download-row")].map(row => {
+        const label = row.querySelector(".download-label").value.trim();
+        const url = row.querySelector(".download-url").value.trim();
+        return label && url ? `<a href="${url}" class="download-btn">${label}</a>` : "";
+      }).join("\n");
+
+      const html = `
+<link rel="stylesheet" href="https://tituhh.github.io/css/cdn/gen.css">
+<div class="container">
+  <div class="poster">
+    <img src="${poster}" alt="${d.title || d.name}">
+  </div>
+
+  <h1 class="title">${d.title || d.name}</h1>
+  <p class="tagline">${d.tagline || ""}</p>
+
+  <div class="genres">${genres}</div>
+
+  <div class="info-grid">
+    <div><span class="label">Release Date:</span> <span class="value">${d.release_date || d.first_air_date || "-"}</span></div>
+    <div><span class="label">Runtime:</span> <span class="value">${d.runtime || (d.episode_run_time ? d.episode_run_time[0] : "-")} min</span></div>
+    <div><span class="label">Director:</span> <span class="value">${director}</span></div>
+    <div><span class="label">Writer:</span> <span class="value">${writer}</span></div>
+    <div><span class="label">Top Cast:</span> <span class="value">${cast}</span></div>
+  </div>
+
+  <div class="overview">
+    <span class="label">Overview:</span>
+    <p>${d.overview}</p>
+  </div>
+
+  ${trailerEmbed}
+
+  <div class="screenshots">
+    <h3>Screenshots</h3>
+    <div class="gallery">
+      ${screenshots.map(img => `<img src="${img}" alt="Screenshot">`).join("")}
+    </div>
+  </div>
+
+  ${downloads}
+</div>`;
+
+      document.getElementById("output").textContent = html;
+    }
+  </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TMDB Post Generator</title>
+  <link rel="stylesheet" href="https://tituhh.github.io/css/cdn/gen.css">
+  <style>
+    body {
+      background: #121212;
+      color: #fff;
+      font-family: 'Poppins', sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    input, button, textarea {
+      border: none;
+      outline: none;
+      border-radius: 10px;
+      padding: 10px;
+      margin: 5px;
+      font-size: 1rem;
+    }
+    input {
+      width: 220px;
+    }
+    textarea {
+      width: 90%;
+      height: 120px;
+    }
+    button {
+      background: cyan;
+      color: #000;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    button:hover {
+      background: #00ffffb0;
+    }
+    .download-row {
+      margin-top: 10px;
+    }
+    #output {
+      background: #1a1a1a;
+      color: #fff;
+      padding: 20px;
+      margin-top: 30px;
+      border-radius: 15px;
+      text-align: left;
+      white-space: pre-wrap;
+      font-family: monospace;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>🎬 TMDB Post Generator</h2>
+    <input type="text" id="tmdbId" placeholder="Enter TMDB ID" />
+    <select id="type">
+      <option value="movie">Movie</option>
+      <option value="tv">Series</option>
+    </select>
+    <button onclick="fetchTMDB()">Fetch Details</button>
+
+    <h3>Download Links</h3>
+    <div id="downloads-container"></div>
+    <button onclick="addDownloadRow()">+ Add More</button>
+    <button onclick="showBulkImport()">Bulk Import Links</button>
+
+    <div id="bulk-import-box" style="display:none;margin-top:10px;">
+      <textarea id="bulk-input" placeholder="Format: 1080p - https://example.com/1080p"></textarea>
+      <button onclick="bulkImportLinks()">Import</button>
+    </div>
+
+    <br><br>
+    <button onclick="generateHTML()">Generate HTML</button>
+
+    <div id="output"></div>
+  </div>
+
+  <script>
+    const API_KEY = "55b11132b5aef36e8376418dcce756f2";
+
+    async function fetchTMDB() {
+      const id = document.getElementById("tmdbId").value.trim();
+      const type = document.getElementById("type").value;
+      if (!id) return alert("Enter TMDB ID first!");
+
+      const res = await fetch(`https://api.themoviedb.org/3/${type}/${id}?api_key=${API_KEY}&append_to_response=credits,videos,images`);
+      const data = await res.json();
+
+      if (data.success === false) return alert("Invalid ID or API Key");
+
+      window.tmdbData = data;
+      alert("✅ Data fetched! Now click 'Generate HTML'");
+    }
+
+    function addDownloadRow() {
+      const container = document.getElementById("downloads-container");
+      const div = document.createElement("div");
+      div.classList.add("download-row");
+      div.innerHTML = `
+        <input type="text" placeholder="Button Label" class="download-label">
+        <input type="text" placeholder="Button URL" class="download-url">
+      `;
+      container.appendChild(div);
+    }
+
+    function showBulkImport() {
+      const box = document.getElementById("bulk-import-box");
+      box.style.display = box.style.display === "none" ? "block" : "none";
+    }
+
+    function bulkImportLinks() {
+      const text = document.getElementById("bulk-input").value.trim();
+      if (!text) return alert("Please paste some links!");
+
+      const lines = text.split("\n");
+      const container = document.getElementById("downloads-container");
+      
+      lines.forEach(line => {
+        const [labelPart, urlPart] = line.split(" - ");
+        if (labelPart && urlPart) {
+          const div = document.createElement("div");
+          div.classList.add("download-row");
+          div.innerHTML = `
+            <input type="text" placeholder="Button Label" class="download-label" value="${labelPart.trim()}">
+            <input type="text" placeholder="Button URL" class="download-url" value="${urlPart.trim()}">
+          `;
+          container.appendChild(div);
+        }
+      });
+
+      document.getElementById("bulk-input").value = "";
+      document.getElementById("bulk-import-box").style.display = "none";
+    }
+
+    function generateHTML() {
+      if (!window.tmdbData) return alert("Fetch TMDB data first!");
+      const d = window.tmdbData;
+      const poster = `https://image.tmdb.org/t/p/w500${d.poster_path}`;
+      const screenshots = d.images.backdrops.slice(0, 5).map(img => `https://image.tmdb.org/t/p/w500${img.file_path}`);
+
+      const cast = d.credits?.cast?.slice(0,5).map(c => c.name).join(", ");
+      const director = d.credits?.crew?.find(c => c.job === "Director")?.name || "Unknown";
+      const writer = d.credits?.crew?.filter(c => c.job === "Writer").map(c => c.name).join(", ") || "N/A";
+      const genres = d.genres?.map(g => `<a href="/search/label/${g.name}">${g.name}</a>`).join(" ");
+
+      const video = d.videos?.results?.find(v => v.type === "Trailer")?.key;
+      const trailerEmbed = video ? `<iframe width="100%" height="315" src="https://www.youtube.com/embed/${video}" frameborder="0" allowfullscreen></iframe>` : "";
+
+      const downloads = [...document.querySelectorAll(".download-row")].map(row => {
+        const label = row.querySelector(".download-label").value.trim();
+        const url = row.querySelector(".download-url").value.trim();
+        return label && url ? `<a href="${url}" class="download-btn">${label}</a>` : "";
+      }).join("\n");
+
+      const html = `
+<link rel="stylesheet" href="https://tituhh.github.io/css/cdn/gen.css">
+<div class="container">
+  <div class="poster">
+    <img src="${poster}" alt="${d.title || d.name}">
+  </div>
+
+  <h1 class="title">${d.title || d.name}</h1>
+  <p class="tagline">${d.tagline || ""}</p>
+
+  <div class="genres">${genres}</div>
+
+  <div class="info-grid">
+    <div><span class="label">Release Date:</span> <span class="value">${d.release_date || d.first_air_date || "-"}</span></div>
+    <div><span class="label">Runtime:</span> <span class="value">${d.runtime || (d.episode_run_time ? d.episode_run_time[0] : "-")} min</span></div>
+    <div><span class="label">Director:</span> <span class="value">${director}</span></div>
+    <div><span class="label">Writer:</span> <span class="value">${writer}</span></div>
+    <div><span class="label">Top Cast:</span> <span class="value">${cast}</span></div>
+  </div>
+
+  <div class="overview">
+    <span class="label">Overview:</span>
+    <p>${d.overview}</p>
+  </div>
+
+  ${trailerEmbed}
+
+  <div class="screenshots">
+    <h3>Screenshots</h3>
+    <div class="gallery">
+      ${screenshots.map(img => `<img src="${img}" alt="Screenshot">`).join("")}
+    </div>
+  </div>
+
+  ${downloads}
+</div>`;
+
+      document.getElementById("output").textContent = html;
+    }
+  </script>
+</body>
+</html>
