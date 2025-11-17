@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>TMDb Post Generator</title>
+<meta charset="utf-8" />
+<style>
+body{background:#0d0d0d;color:#fff;font-family:Arial;padding:20px;}
+.container{max-width:1000px;margin:auto;background:#141414;padding:25px;border-radius:12px;}
+input,textarea,select{width:100%;padding:10px;margin:7px 0;border-radius:6px;border:1px solid #333;background:#1f1f1f;color:#fff;box-sizing:border-box;}
+button{padding:10px 15px;background:#0078ff;border:none;border-radius:6px;color:#fff;cursor:pointer;margin-top:10px;}
+.server-box{background:#1c1c1c;padding:10px;border-radius:6px;margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:center;}
+.server-controls{grid-column:span 2;text-align:right;}
+.small{width:auto;display:inline-block;padding:8px 10px;margin-left:6px;}
+.output-box{background:#1f1f1f;padding:15px;margin-top:15px;border-radius:10px;white-space:pre-wrap;}
+.note{font-size:13px;color:#cfcfcf;margin-top:6px;}
+.file-row{display:flex;gap:10px;align-items:center;}
+.good{color:#6bff8c}
+.bad{color:#ff6b6b}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h2>TMDb Post Generator</h2>
+
+  <!-- TMDb Input -->
+  <label>TMDb ID</label>
+  <input type="text" id="tmdbID" placeholder="Movie TMDb ID">
+
+  <button onclick="fetchTMDB()">Fetch Details</button>
+
+  <!-- Description -->
+  <label>Description</label>
+  <textarea id="description" rows="4" placeholder="Movie description..."></textarea>
+
+  <!-- Servers -->
+  <h3>Servers</h3>
+  <div id="serverContainer"></div>
+
+  <div>
+    <button onclick="addServer()">+ Add More Server</button>
+    <button onclick="clearServers()" class="small">Clear All</button>
+  </div>
+
+  <h3 style="margin-top:18px;">Bulk Link Import</h3>
+
+  <div class="note">
+    Supported formats per line:<br>
+    <code>Name,URL</code> | <code>Name|URL</code> | <code>URL</code><br><br>
+  </div>
+
+  <!-- Paste bulk -->
+  <label>Paste Bulk Links</label>
+  <textarea id="bulkText" rows="6" placeholder="One link per line"></textarea>
+
+  <button onclick="importBulkFromText()">Import Pasted Links</button>
+  <button onclick="previewBulkText()" class="small">Preview</button>
+
+  <!-- File upload -->
+  <label style="margin-top:15px;">Upload CSV/TXT File</label>
+  <div class="file-row">
+    <input type="file" id="bulkFile" accept=".csv,.txt">
+    <button onclick="importBulkFromFile()">Upload & Import</button>
+    <button onclick="previewBulkFile()" class="small">Preview</button>
+  </div>
+
+  <div id="bulkPreview" class="note"></div>
+
+  <!-- Trailer -->
+  <h3 style="margin-top:18px;">YouTube Trailer ID</h3>
+  <input type="text" id="ytID" placeholder="Example: S9que3T1SCc">
+
+  <!-- Actions -->
+  <div style="margin-top:18px;">
+    <button onclick="generateHTML()">Generate HTML</button>
+    <button onclick="copyHTML()">Copy HTML</button>
+    <button onclick="sendToBlogger()">Send to Blogger</button>
+  </div>
+
+  <!-- Output -->
+  <div class="output-box" id="outputHTML"></div>
+</div>
+
+<script>
+const apiKey = "55b11132b5aef36e8376418dcce756f2";
+
+// Add server block
+function addServer(name="", link=""){
+    const box = document.getElementById("serverContainer");
+    const div = document.createElement("div");
+    div.className = "server-box";
+    div.innerHTML = `
+      <input type="text" class="srvName" placeholder="Server Name" value="${escapeHtml(name)}">
+      <input type="text" class="srvLink" placeholder="Server Link" value="${escapeHtml(link)}">
+      <div class="server-controls">
+        <button class="small" onclick="removeThis(this)">Remove</button>
+      </div>
+    `;
+    box.appendChild(div);
+    div.querySelector('.server-controls').style.gridColumn="1 / -1";
+}
+
+function clearServers(){
+    if(confirm("Clear all servers?"))
+        document.getElementById("serverContainer").innerHTML = "";
+}
+
+function removeThis(btn){
+    btn.closest(".server-box").remove();
+}
+
+// TMDb fetch
+function fetchTMDB(){
+    const id = document.getElementById("tmdbID").value.trim();
+    if(!id) return alert("Enter TMDb ID");
+
+    fetch(`https://api.themoviedb.org/3/movie/${id}?api_key=${apiKey}`)
+    .then(r=>r.json())
+    .then(data=>{
+        document.getElementById("description").value =
+`${data.overview}
+
+Release Date: ${data.release_date}
+Rating: ${data.vote_average}`;
+        alert("TMDb Data Fetched!");
+    })
+    .catch(()=>alert("Invalid TMDb ID"));
+}
+
+// Generate HTML
+function generateHTML(){
+    const desc = document.getElementById("description").value;
+    const yt = document.getElementById("ytID").value.trim();
+    const id = document.getElementById("tmdbID").value.trim();
+
+    // fetch poster
+    fetch(`https://api.themoviedb.org/3/movie/${id}?api_key=${apiKey}`)
+    .then(r=>r.json())
+    .then(d=>{
+        const poster = "https://image.tmdb.org/t/p/w600_and_h900_bestv2" + d.poster_path;
+
+        let servers="";
+        const names=document.getElementsByClassName("srvName");
+        const links=document.getElementsByClassName("srvLink");
+
+        for(let i=0;i<names.length;i++){
+            if(links[i].value.trim()!==""){
+                servers += `<a href="${escapeHtml(links[i].value)}" target="_blank">${escapeHtml(names[i].value)}</a>\n`;
+            }
+        }
+
+        const finalHTML = `
+${desc}
+
+${servers}
+
+[ <div class='video' data-embed='${escapeHtml(yt)}'></div> ]
+
+<div class="separator" style="clear: both;">
+  <a href="${poster}" style="display:block;padding:1em 0;text-align:center;">
+    <img src="${poster}">
+  </a>
+</div>
+`;
+
+        document.getElementById("outputHTML").innerText = finalHTML;
+    });
+}
+
+// Copy output
+function copyHTML(){
+    navigator.clipboard.writeText(document.getElementById("outputHTML").innerText);
+    alert("Copied!");
+}
+
+// Send to Blogger (SMTP)
+function sendToBlogger(){
+    const html=document.getElementById("outputHTML").innerText;
+    if(!html) return alert("Generate post first");
+
+    const title=prompt("Enter Post Title:");
+    if(!title) return;
+
+    fetch("/api/send",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({title,content:html})
+    })
+    .then(r=>r.json())
+    .then(d=>alert(d.message))
+    .catch(()=>alert("API Error"));
+}
+
+// Escape HTML
+function escapeHtml(s){
+    return String(s||"")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;");
+}
+
+/* ------------------------
+   BULK IMPORT SYSTEM
+------------------------*/
+
+function parseBulk(rows){
+    const list=[];
+    rows.forEach(line=>{
+        if(!line) return;
+        let name="", url=line;
+
+        if(line.includes(",")){
+            name=line.split(",")[0].trim();
+            url=line.split(",").slice(-1)[0].trim();
+        } else if(line.includes("|")){
+            name=line.split("|")[0].trim();
+            url=line.split("|")[1].trim();
+        }
+
+        if(!url.match(/^https?:\/\//)) return;
+
+        if(!name) name="Server "+(list.length+1);
+
+        list.push({name,url});
+    });
+    return list;
+}
+
+function importBulkFromText(){
+    const text=document.getElementById("bulkText").value.trim();
+    if(!text) return alert("Paste some links");
+
+    const rows=text.split("\n");
+    const parsed=parseBulk(rows);
+
+    parsed.forEach(s=>addServer(s.name,s.url));
+    alert(`Imported ${parsed.length} servers`);
+}
+
+function importBulkFromFile(){
+    const file=document.getElementById("bulkFile").files[0];
+    if(!file) return alert("Select a file");
+
+    const r=new FileReader();
+    r.onload=()=>{
+        const rows=r.result.split("\n");
+        const parsed=parseBulk(rows);
+        parsed.forEach(s=>addServer(s.name,s.url));
+        alert(`Imported ${parsed.length} servers from file`);
+    };
+    r.readAsText(file);
+}
+
+function previewBulkText(){
+    const text=document.getElementById("bulkText").value.trim();
+    if(!text) return alert("Nothing to preview");
+
+    const rows=text.split("\n");
+    const parsed=parseBulk(rows);
+
+    document.getElementById("bulkPreview").innerHTML =
+        parsed.length
+        ? `<span class='good'>${parsed.length} valid links detected</span>`
+        : `<span class='bad'>No valid links found</span>`;
+}
+
+function previewBulkFile(){
+    const file=document.getElementById("bulkFile").files[0];
+    if(!file) return alert("Choose a file");
+
+    const r=new FileReader();
+    r.onload=()=>{
+        const rows=r.result.split("\n");
+        const parsed=parseBulk(rows);
+        document.getElementById("bulkPreview").innerHTML =
+            parsed.length
+            ? `<span class='good'>${parsed.length} valid links detected</span>`
+            : `<span class='bad'>No valid links in file</span>`;
+    };
+    r.readAsText(file);
+}
+
+// default servers
+addServer("Server 1","");
+addServer("Server 2");
+</script>
+
+</body>
+</html>
