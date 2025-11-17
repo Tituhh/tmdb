@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>TMDb Post Generator</title>
+<style>
+body{background:#0d0d0d;color:#fff;font-family:Arial;padding:20px;}
+.container{max-width:800px;margin:auto;background:#141414;padding:25px;border-radius:12px;}
+input,textarea{width:100%;padding:10px;margin:7px 0;border-radius:6px;border:1px solid #333;background:#1f1f1f;color:#fff;}
+button{padding:10px 15px;background:#0078ff;border:none;border-radius:6px;color:#fff;cursor:pointer;margin-top:10px;}
+.server-box{background:#1c1c1c;padding:10px;border-radius:6px;margin-top:10px;}
+.output-box{background:#1f1f1f;padding:15px;margin-top:15px;border-radius:10px;white-space:pre-wrap;}
+</style>
+</head>
+<body>
+
+<div class="container">
+<h2>TMDb Post Generator</h2>
+
+<label>TMDb ID</label>
+<input type="text" id="tmdbID">
+
+<button onclick="fetchTMDB()">Fetch Details</button>
+
+<label>Description</label>
+<textarea id="description" rows="4"></textarea>
+
+<h3>Servers</h3>
+<div id="serverContainer"></div>
+
+<button onclick="addServer()">+ Add More Server</button>
+
+<label>YouTube Trailer ID</label>
+<input type="text" id="ytID">
+
+<button onclick="generateHTML()">Generate HTML</button>
+<button onclick="copyHTML()">Copy HTML</button>
+<button onclick="sendToBlogger()">Send to Blogger</button>
+
+<div class="output-box" id="outputHTML"></div>
+</div>
+
+<script>
+const apiKey = "55b11132b5aef36e8376418dcce756f2";
+
+function addServer(name="", link=""){
+    let box = document.getElementById("serverContainer");
+    let div = document.createElement("div");
+    div.classList.add("server-box");
+    div.innerHTML = `
+        <label>Server Name</label>
+        <input type="text" class="srvName" value="${name}">
+        <label>Server Link</label>
+        <input type="text" class="srvLink" value="${link}">
+    `;
+    box.appendChild(div);
+}
+
+function fetchTMDB(){
+    let id = document.getElementById("tmdbID").value;
+
+    fetch(`https://api.themoviedb.org/3/movie/${id}?api_key=${apiKey}`)
+    .then(res => res.json())
+    .then(data => {
+        document.getElementById("description").value =
+`${data.overview}
+
+Release Date: ${data.release_date}
+Rating: ${data.vote_average}`;
+        alert("TMDb Info Fetched!");
+    });
+}
+
+function generateHTML(){
+    let desc = document.getElementById("description").value;
+    let yt = document.getElementById("ytID").value;
+    let id = document.getElementById("tmdbID").value;
+
+    fetch(`https://api.themoviedb.org/3/movie/${id}?api_key=${apiKey}`)
+    .then(res => res.json())
+    .then(d => {
+        let poster = "https://image.tmdb.org/t/p/w600_and_h900_bestv2" + d.poster_path;
+
+        let servers = "";
+        let names = document.getElementsByClassName("srvName");
+        let links = document.getElementsByClassName("srvLink");
+
+        for(let i=0;i<names.length;i++){
+            if(links[i].value.trim() !== ""){
+                servers += `<a href="${links[i].value}" target="_blank">${names[i].value}</a>\n`;
+            }
+        }
+
+        let finalHTML = `
+${desc}
+
+${servers}
+
+[ <div class='video' data-embed='${yt}'></div> ]
+
+<div class="separator" style="clear: both;">
+    <a href="${poster}" style="display:block;padding:1em 0;text-align:center;">
+        <img src="${poster}" />
+    </a>
+</div>
+`;
+
+        document.getElementById("outputHTML").innerText = finalHTML;
+    });
+}
+
+function copyHTML(){
+    navigator.clipboard.writeText(
+        document.getElementById("outputHTML").innerText
+    );
+    alert("Copied!");
+}
+
+function sendToBlogger(){
+    let postHTML = document.getElementById("outputHTML").innerText;
+    let postTitle = prompt("Enter Post Title:");
+
+    if (!postTitle) return alert("Title required!");
+
+    fetch("/api/send", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            title: postTitle,
+            content: postHTML
+        })
+    })
+    .then(res => res.json())
+    .then(data => alert(data.message))
+    .catch(() => alert("API Error"));
+}
+
+addServer("Server 1","");
+addServer("Server 2","");
+</script>
+
+</body>
+</html>
