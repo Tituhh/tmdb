@@ -1,14 +1,12 @@
 {
   "version": 2,
-  "functions": {
-    "api/bot.js": {
-      "runtime": "nodejs20.x"
-    }
-  },
-  "routes": [
+  "builds": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api/bot.js"
+      "src": "api/bot.js",
+      "use": "@vercel/node"
     }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "api/bot.js" }
   ]
 }
